@@ -317,6 +317,66 @@ namespace IdleRPG.NET {
             }
         }
 
+        public void Calamity(List<Player> online) {
+            if (online == null || online.Count == 0)
+                return;
+
+            Player player = Players[Players.IndexOf(online[new Random().Next(online.Count)])];
+            if (new Random().Next(10) < 1) {
+                string itemType = Items[new Random().Next(Items.Length)];
+                switch (itemType) {
+                    case "amulet":
+                        ChanMsg($"{player.Name} fell, chipping the stone in their amulet! {player.Name}'s amulet loses 10% of " +
+                            $"it's effectiveness");
+                        break;
+                    case "charm":
+                        ChanMsg($"{player.Name} slipped and dropped their charm in a dirty bog! {player.Name}'s charm loses 10% of " +
+                            $"it's effectiveness");
+                        break;
+                    case "weapon":
+                        ChanMsg($"{player.Name} left their weapon out in the rain to rust! {player.Name}'s weapon loses 10% of " +
+                            $"it's effectiveness");
+                        break;
+                    case "tunic":
+                        ChanMsg($"{player.Name} spilled a level 7 shrinking potion on their tunic! {player.Name}'s tunic loses 10% of " +
+                            $"it's effectiveness");
+                        break;
+                    case "shield":
+                        ChanMsg($"{player.Name}'s shield was damaged by a dragon's fiery breath! {player.Name}'s shield loses 10% of " +
+                            $"it's effectiveness");
+                        break;
+                    case "set of leggings":
+                        ChanMsg($"{player.Name} burned a hole through their leggings while ironing them! {player.Name}'s set of " +
+                            $"leggings loses 10% of it's effectiveness");
+                        break;
+                    case "pair of gloves":
+                        ChanMsg($"{player.Name} grabbed the lit end of their torch by mistake, and burned their pair of gloves! " +
+                            $"{player.Name}'s pair of gloves loses 10% of it's effectiveness");
+                        break;
+                    case "ring":
+                        ChanMsg($"{player.Name}'s ring slipped off their finger! {player.Name}'s ring loses 10% of " +
+                            $"it's effectiveness");
+                        break;
+                    case "helm":
+                        ChanMsg($"{player.Name} wasn't watching where they were going, and hit their head on a tree branch! " +
+                            $"{player.Name}'s helm loses 10% of it's effectiveness");
+                        break;
+                    case "pair of boots":
+                        ChanMsg($"{player.Name} stubbed their toe on a rock! {player.Name}'s pair of boots loses 10% of " +
+                            $"it's effectiveness");
+                        break;
+                }
+                Players[Players.IndexOf(player)].Items[itemType].Level = (int)(player.Items[itemType].Level * .9);
+            } else {
+                // TODO: Need to perform a calamity event lookup here after implementing loading of events from text file.
+                string action = string.Empty;
+                int ttl = (int)(((5 + (new Random().Next(8))) / 100.0) * player.TTL);
+                ChanMsg($"{player.Name} {action}. This terrible calamity has slowed them {Duration(ttl)} from level {player.Level + 1}.");
+                Players[Players.IndexOf(player)].TTL += ttl;
+                ChanMsg($"{player.Name} reaches next level in {Duration(player.TTL)}.");
+            }
+        }
+
         private void LevelUp(Player p) {
             p.Level += 1;
             p.TTL = TTL(p.Level);
