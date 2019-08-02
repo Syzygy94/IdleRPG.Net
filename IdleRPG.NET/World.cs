@@ -493,15 +493,17 @@ namespace IdleRPG.NET {
                 if ((int)Quest["type"] == 2 && ((List<Player>)Quest["players"]).Count > 0) {
                     bool stageFinished = true;
                     foreach (Player p in (List<Player>)Quest["players"]) {
-                        if ((int)Quest["stage"] == 1)
+                        if ((int)Quest["stage"] == 1) {
                             if (Players[Players.IndexOf(p)].Pos != (Pos)Quest["pos1"]) {
                                 stageFinished = false;
                                 break;
-                            } else
+                            } else {
                                 if (Players[Players.IndexOf(p)].Pos != (Pos)Quest["pos2"]) {
-                                stageFinished = false;
-                                break;
+                                    stageFinished = false;
+                                    break;
+                                }
                             }
+                        }
                     }
                     if ((int)Quest["stage"] == 1 && stageFinished)
                         Quest["stage"] = 2;
