@@ -16,57 +16,57 @@ namespace IdleRPG.NET {
         }
 
         public void FindItem(Player p) {
-            Item newItem = new Item() { ItemType = Items[new Random().Next(Items.Length)], Level = 1, Tag = string.Empty };
+            Item newItem = new Item() { ItemType = Items[Random.Next(Items.Length)], Level = 1, Tag = string.Empty };
             int level = 1;
             for (int i = 1; i < (int)(p.Level * 1.5); i++) {
-                if (new Random().Next((int)Math.Pow(1.4, i / 4)) < 1)
+                if (Random.Next((int)Math.Pow(1.4, i / 4)) < 1)
                     newItem.Level = i;
             }
 
-            if (p.Level >= 25 && new Random().Next(40) < 1) {
-                level = 50 + new Random().Next(25);
+            if (p.Level >= 25 && Random.Next(40) < 1) {
+                level = 50 + Random.Next(25);
                 if (level >= newItem.Level && level > p.Items["helm"].Level) {
                     ExchangeItem(p, new Item() { ItemType = "helm", Level = level, Tag = "a" });
                     return;
                 }
-            } else if (p.Level >= 25 && new Random().Next(40) < 1) {
-                level = 50 + new Random().Next(25);
+            } else if (p.Level >= 25 && Random.Next(40) < 1) {
+                level = 50 + Random.Next(25);
                 if (level >= newItem.Level && level > p.Items["ring"].Level) {
                     ExchangeItem(p, new Item() { ItemType = "ring", Level = level, Tag = "h" });
                     return;
                 }
-            } else if (p.Level >= 30 && new Random().Next(40) < 1) {
-                level = 75 + new Random().Next(25);
+            } else if (p.Level >= 30 && Random.Next(40) < 1) {
+                level = 75 + Random.Next(25);
                 if (level >= newItem.Level && level > p.Items["tunic"].Level) {
                     ExchangeItem(p, new Item() { ItemType = "tunic", Level = level, Tag = "b" });
                     return;
                 }
-            } else if (p.Level >= 35 && new Random().Next(40) < 1) {
-                level = 100 + new Random().Next(25);
+            } else if (p.Level >= 35 && Random.Next(40) < 1) {
+                level = 100 + Random.Next(25);
                 if (level >= newItem.Level && level > p.Items["amulet"].Level) {
                     ExchangeItem(p, new Item() { ItemType = "amulet", Level = level, Tag = "c" });
                     return;
                 }
-            } else if (p.Level >= 40 && new Random().Next(40) < 1) {
-                level = 150 + new Random().Next(25);
+            } else if (p.Level >= 40 && Random.Next(40) < 1) {
+                level = 150 + Random.Next(25);
                 if (level >= newItem.Level && level > p.Items["weapon"].Level) {
                     ExchangeItem(p, new Item() { ItemType = "weapon", Level = level, Tag = "d" });
                     return;
                 }
-            } else if (p.Level >= 45 && new Random().Next(40) < 1) {
-                level = 175 + new Random().Next(25);
+            } else if (p.Level >= 45 && Random.Next(40) < 1) {
+                level = 175 + Random.Next(25);
                 if (level >= newItem.Level && level > p.Items["weapon"].Level) {
                     ExchangeItem(p, new Item() { ItemType = "weapon", Level = level, Tag = "e" });
                     return;
                 }
-            } else if (p.Level >= 48 && new Random().Next(40) < 1) {
-                level = 250 + new Random().Next(50);
+            } else if (p.Level >= 48 && Random.Next(40) < 1) {
+                level = 250 + Random.Next(50);
                 if (level >= newItem.Level && level > p.Items["pair of boots"].Level) {
                     ExchangeItem(p, new Item() { ItemType = "pair of boots", Level = level, Tag = "f" });
                     return;
                 }
-            } else if (p.Level >= 52 && new Random().Next(40) < 1) {
-                level = 300 + new Random().Next(50);
+            } else if (p.Level >= 52 && Random.Next(40) < 1) {
+                level = 300 + Random.Next(50);
                 if (level >= newItem.Level && level > p.Items["weapon"].Level) {
                     ExchangeItem(p, new Item() { ItemType = "weapon", Level = level, Tag = "g" });
                     return;
@@ -83,18 +83,18 @@ namespace IdleRPG.NET {
         }
 
         public void ChallengeOpp(Player p) {
-            if (p.Level < 25 && new Random().Next(4) != 0)
+            if (p.Level < 25 && Random.Next(4) != 0)
                 return;
 
             List<Player> opps = Players.Where(player => player != p).ToList();
             if (opps == null || opps.Count == 0)
                 return;
 
-            Player opp = new Random().Next(opps.Count) < 1 ? new Player() { Name = Config.PrimNick } : Players[Players.IndexOf(opps[new Random().Next(opps.Count)])];
+            Player opp = Random.Next(opps.Count) < 1 ? new Player() { Name = Config.PrimNick } : Players[Players.IndexOf(opps[Random.Next(opps.Count)])];
             int playerSum = ItemSum(p, true);
             int oppSum = ItemSum(opp, true);
-            int playerRoll = new Random().Next(playerSum);
-            int oppRoll = new Random().Next(oppSum);
+            int playerRoll = Random.Next(playerSum);
+            int oppRoll = Random.Next(oppSum);
 
             if (playerRoll >= oppRoll) {
                 int gain = opp.Name == Config.PrimNick ? 20 : opp.Level / 4;
@@ -108,7 +108,7 @@ namespace IdleRPG.NET {
                         $"straight up stomped them in combat! {Duration(ttl)} is removed from {p.Name}'s clock.");
                     ChanMsg($"{opp.Name} cries.");
                 } else {
-                    int battleMsg = new Random().Next(3);
+                    int battleMsg = Random.Next(3);
                     if (battleMsg == 0)
                         ChanMsg($"{p.Name} [{playerRoll}/{playerSum}] has come upon {opp.Name} [{oppRoll}/{oppSum}] and " +
                             $"completely messed them up! {Duration(ttl)} is removed from {p.Name}'s clock.");
@@ -122,13 +122,13 @@ namespace IdleRPG.NET {
                 p.TTL -= ttl;
                 ChanMsg($"{p.Name} reaches next level in {Duration(p.TTL)}.");
                 int cs = p.Align == "g" ? 50 : p.Align == "e" ? 20 : 35;
-                if (new Random().Next(cs) < 1 && opp.Name != Config.PrimNick) {
-                    ttl = (int)(5 + (new Random().Next(20) / 100.0) * opp.TTL);
+                if (Random.Next(cs) < 1 && opp.Name != Config.PrimNick) {
+                    ttl = (int)(5 + (Random.Next(20) / 100.0) * opp.TTL);
                     ChanMsg($"{p.Name} has dealt {opp.Name} a Critical Strike! {Duration(ttl)} is added to {opp.Name}'s clock.");
                     Players[Players.IndexOf(opp)].TTL += ttl;
                     ChanMsg($"{opp.Name} reaches next level in {Duration(Players[Players.IndexOf(opp)].TTL)}.");
-                } else if (new Random().Next(25) < 1 && opp.Name != Config.PrimNick && p.Level > 19) {
-                    string itemType = Items[new Random().Next(Items.Length)];
+                } else if (Random.Next(25) < 1 && opp.Name != Config.PrimNick && p.Level > 19) {
+                    string itemType = Items[Random.Next(Items.Length)];
                     if (opp.Items[itemType].Level > p.Items[itemType].Level) {
                         ChanMsg($"In the fierce battle, {opp.Name} dropped their level {opp.Items[itemType].Level} {itemType}! " +
                             $"{p.Name} picks it up, tossing an old level {p.Items[itemType].Level} {itemType} to {opp.Name}.");
@@ -148,7 +148,7 @@ namespace IdleRPG.NET {
                     ChanMsg($"{p.Name} [{playerRoll}/{playerSum}] has come upon {opp.Name} [{oppRoll}/{oppSum}] and " +
                         $"brought bronze weapons to an iron fight! {Duration(ttl)} is added to {p.Name}'s clock.");
                 else {
-                    int battleMsg = new Random().Next(3);
+                    int battleMsg = Random.Next(3);
                     if (battleMsg == 0)
                         ChanMsg($"{p.Name} [{playerRoll}/{playerSum}] has come upon {opp.Name} [{oppRoll}/{oppSum}] and " +
                             $"got flexed on in combat! {Duration(ttl)} is added to {p.Name}'s clock.");
@@ -167,8 +167,8 @@ namespace IdleRPG.NET {
         public void CollisionFight(Player p, Player opp) {
             int playerSum = ItemSum(p, true);
             int oppSum = ItemSum(opp, true);
-            int playerRoll = new Random().Next(playerSum);
-            int oppRoll = new Random().Next(oppSum);
+            int playerRoll = Random.Next(playerSum);
+            int oppRoll = Random.Next(oppSum);
 
             if (playerRoll >= oppRoll) {
                 int gain = opp.Level / 4;
@@ -182,7 +182,7 @@ namespace IdleRPG.NET {
                         $"straight up stomped them in combat! {Duration(ttl)} is removed from {p.Name}'s clock.");
                     ChanMsg($"{opp.Name} cries.");
                 } else {
-                    int battleMsg = new Random().Next(3);
+                    int battleMsg = Random.Next(3);
                     if (battleMsg == 0)
                         ChanMsg($"{p.Name} [{playerRoll}/{playerSum}] has come upon {opp.Name} [{oppRoll}/{oppSum}] and " +
                             $"completely messed them up! {Duration(ttl)} is removed from {p.Name}'s clock.");
@@ -196,13 +196,13 @@ namespace IdleRPG.NET {
                 p.TTL -= ttl;
                 ChanMsg($"{p.Name} reaches next level in {Duration(p.TTL)}.");
                 int cs = p.Align == "g" ? 50 : p.Align == "e" ? 20 : 35;
-                if (new Random().Next(cs) < 1 && opp.Name != Config.PrimNick) {
-                    ttl = (int)(5 + (new Random().Next(20) / 100.0) * opp.TTL);
+                if (Random.Next(cs) < 1 && opp.Name != Config.PrimNick) {
+                    ttl = (int)(5 + (Random.Next(20) / 100.0) * opp.TTL);
                     ChanMsg($"{p.Name} has dealt {opp.Name} a Critical Strike! {Duration(ttl)} is added to {opp.Name}'s clock.");
                     Players[Players.IndexOf(opp)].TTL += ttl;
                     ChanMsg($"{opp.Name} reaches next level in {Duration(Players[Players.IndexOf(opp)].TTL)}.");
-                } else if (new Random().Next(25) < 1 && opp.Name != Config.PrimNick && p.Level > 19) {
-                    string itemType = Items[new Random().Next(Items.Length)];
+                } else if (Random.Next(25) < 1 && opp.Name != Config.PrimNick && p.Level > 19) {
+                    string itemType = Items[Random.Next(Items.Length)];
                     if (opp.Items[itemType].Level > p.Items[itemType].Level) {
                         ChanMsg($"In the fierce battle, {opp.Name} dropped their level {opp.Items[itemType].Level} {itemType}! " +
                             $"{p.Name} picks it up, tossing an old level {p.Items[itemType].Level} {itemType} to {opp.Name}.");
@@ -222,7 +222,7 @@ namespace IdleRPG.NET {
                     ChanMsg($"{p.Name} [{playerRoll}/{playerSum}] has come upon {opp.Name} [{oppRoll}/{oppSum}] and " +
                         $"brought bronze weapons to an iron fight! {Duration(ttl)} is added to {p.Name}'s clock.");
                 else {
-                    int battleMsg = new Random().Next(3);
+                    int battleMsg = Random.Next(3);
                     if (battleMsg == 0)
                         ChanMsg($"{p.Name} [{playerRoll}/{playerSum}] has come upon {opp.Name} [{oppRoll}/{oppSum}] and " +
                             $"got flexed on in combat! {Duration(ttl)} is added to {p.Name}'s clock.");
@@ -257,9 +257,9 @@ namespace IdleRPG.NET {
         }
 
         public void Hog(List<Player> online) {
-            Player p = online[new Random().Next(online.Count)];
-            int ttl = (int)((5 + (new Random().Next(71) / 100.0)) * p.TTL);
-            if (new Random().Next(5) == 1) {
+            Player p = online[Random.Next(online.Count)];
+            int ttl = (int)((5 + (Random.Next(71) / 100.0)) * p.TTL);
+            if (Random.Next(5) == 1) {
                 ChanMsg($"Verily I say unto thee, the Heavens have burst forth, and the blessed hand of God carried " +
                     $"{p.Name} {Duration(ttl)} toward level {p.Level + 1}");
                 p.TTL -= ttl;
@@ -277,10 +277,10 @@ namespace IdleRPG.NET {
                 return;
 
             if (onlineGood.Count >= 2) {
-                List<Player> players = onlineGood.OrderBy(x => new Random().Next()).Take(2).ToList();
+                List<Player> players = onlineGood.OrderBy(x => Random.Next()).Take(2).ToList();
                 Player p1 = Players[Players.IndexOf(players[0])];
                 Player p2 = Players[Players.IndexOf(players[1])];
-                int gain = 5 + new Random().Next(8);
+                int gain = 5 + Random.Next(8);
                 ChanMsg($"{p1.Name} and {p2.Name} have not let the iniquities of evil men poison them. Together have they prayed to " +
                     $"their god, and it is his light that now shines upon them. {gain}% of their time is removed from their clocks.");
                 p1.TTL = (int)(p1.TTL * (1 - (gain / 100.0)));
@@ -294,10 +294,10 @@ namespace IdleRPG.NET {
             if (onlineEvil == null || onlineEvil.Count == 0)
                 return;
 
-            Player player = Players[Players.IndexOf(onlineEvil[new Random().Next(onlineEvil.Count)])];
-            if (new Random().Next(2) < 1 && (onlineGood != null && onlineGood.Count > 0)) {
-                string itemType = Items[new Random().Next(Items.Length)];
-                Player targetPlayer = Players[Players.IndexOf(onlineGood[new Random().Next(onlineGood.Count)])];
+            Player player = Players[Players.IndexOf(onlineEvil[Random.Next(onlineEvil.Count)])];
+            if (Random.Next(2) < 1 && (onlineGood != null && onlineGood.Count > 0)) {
+                string itemType = Items[Random.Next(Items.Length)];
+                Player targetPlayer = Players[Players.IndexOf(onlineGood[Random.Next(onlineGood.Count)])];
                 if (targetPlayer.Items[itemType].Level > player.Items[itemType].Level) {
                     Item itemSwapped = player.Items[itemType];
                     player.Items[itemType] = targetPlayer.Items[itemType];
@@ -309,7 +309,7 @@ namespace IdleRPG.NET {
                     Notice(player, $"You made to steal {targetPlayer.Name}'s {itemType}, but realized it was a lower level than your " +
                         $"own. You creep back into the shadows.");
             } else {
-                int gain = 1 + new Random().Next(5);
+                int gain = 1 + Random.Next(5);
                 ChanMsg($"{player.Name} is forsaken by their evil god. {Duration((int)(player.TTL * (gain / 100.0)))} is added to their " +
                     $"clock.");
                 player.TTL = (int)(player.TTL * (1 + (gain / 100.0)));
@@ -321,9 +321,9 @@ namespace IdleRPG.NET {
             if (online == null || online.Count == 0)
                 return;
 
-            Player player = Players[Players.IndexOf(online[new Random().Next(online.Count)])];
-            if (new Random().Next(10) < 1) {
-                string itemType = Items[new Random().Next(Items.Length)];
+            Player player = Players[Players.IndexOf(online[Random.Next(online.Count)])];
+            if (Random.Next(10) < 1) {
+                string itemType = Items[Random.Next(Items.Length)];
                 switch (itemType) {
                     case "amulet":
                         ChanMsg($"{player.Name} fell, chipping the stone in their amulet! {player.Name}'s amulet loses 10% of " +
@@ -370,7 +370,7 @@ namespace IdleRPG.NET {
             } else {
                 // TODO: Need to perform a calamity event lookup here after implementing loading of events from text file.
                 string action = string.Empty;
-                int ttl = (int)(((5 + (new Random().Next(8))) / 100.0) * player.TTL);
+                int ttl = (int)(((5 + (Random.Next(8))) / 100.0) * player.TTL);
                 ChanMsg($"{player.Name} {action}. This terrible calamity has slowed them {Duration(ttl)} from level {player.Level + 1}.");
                 Players[Players.IndexOf(player)].TTL += ttl;
                 ChanMsg($"{player.Name} reaches next level in {Duration(player.TTL)}.");
@@ -381,9 +381,9 @@ namespace IdleRPG.NET {
             if (online == null || online.Count == 0)
                 return;
 
-            Player player = Players[Players.IndexOf(online[new Random().Next(online.Count)])];
-            if (new Random().Next(10) < 1) {
-                string itemType = Items[new Random().Next(Items.Length)];
+            Player player = Players[Players.IndexOf(online[Random.Next(online.Count)])];
+            if (Random.Next(10) < 1) {
+                string itemType = Items[Random.Next(Items.Length)];
                 switch (itemType) {
                     case "amulet":
                         ChanMsg($"{player.Name}'s amulet was blessed by a passing cleric! {player.Name}'s amulet gains 10% effectiveness");
@@ -424,10 +424,45 @@ namespace IdleRPG.NET {
             } else {
                 // TODO: Need to perform a godsend event lookup here after implementing loading of events from text file.
                 string action = string.Empty;
-                int ttl = (int)(((5 + (new Random().Next(8))) / 100.0) * player.TTL);
+                int ttl = (int)(((5 + (Random.Next(8))) / 100.0) * player.TTL);
                 ChanMsg($"{player.Name} {action}! This wondrous godsend has accelerated them {Duration(ttl)} towards level {player.Level + 1}.");
                 Players[Players.IndexOf(player)].TTL -= ttl;
                 ChanMsg($"{player.Name} reaches next level in {Duration(player.TTL)}.");
+            }
+        }
+
+        public void TeamBattle(List<Player> online) {
+            if (online == null || online.Count < 6)
+                return;
+
+            List<Player> players = online.OrderBy(x => Random.Next()).Take(6).ToList();
+            players.Shuffle();
+
+            int team1Sum = ItemSum(players[0], true) + ItemSum(players[1], true) + ItemSum(players[2], true);
+            int team2Sum = ItemSum(players[3], true) + ItemSum(players[4], true) + ItemSum(players[5], true);
+
+            int ttl = Players[Players.IndexOf(players[0])].TTL;
+            for (int i = 1; i < 3; i++)
+                ttl = Players[Players.IndexOf(players[i])].TTL > ttl ? Players[Players.IndexOf(players[i])].TTL : ttl;
+
+            ttl = (int)(ttl * .20);
+            int team1Roll = Random.Next(team1Sum - 1);
+            int team2Roll = Random.Next(team2Sum - 1);
+
+            if (team1Roll >= team2Roll) {
+                ChanMsg($"{players[0].Name}, {players[1].Name}, and {players[2].Name} [{team1Roll}/{team1Sum}] have team battled " +
+                    $"{players[3].Name}, {players[4].Name}, and {players[5].Name} [{team2Roll}/{team2Sum}] and won! {Duration(ttl)} " +
+                    $"is removed from their clocks.");
+                Players[Players.IndexOf(players[0])].TTL -= ttl;
+                Players[Players.IndexOf(players[1])].TTL -= ttl;
+                Players[Players.IndexOf(players[2])].TTL -= ttl;
+            } else {
+                ChanMsg($"{players[0].Name}, {players[1].Name}, and {players[2].Name} [{team1Roll}/{team1Sum}] have team battled " +
+                    $"{players[3].Name}, {players[4].Name}, and {players[5].Name} [{team2Roll}/{team2Sum}] and lost! {Duration(ttl)} " +
+                    $"is added to their clocks.");
+                Players[Players.IndexOf(players[0])].TTL += ttl;
+                Players[Players.IndexOf(players[1])].TTL += ttl;
+                Players[Players.IndexOf(players[2])].TTL += ttl;
             }
         }
 
@@ -543,5 +578,19 @@ namespace IdleRPG.NET {
         private void Notice(Player player, string msg) {
 
         }
+    }
+
+    static class Extensions {
+        public static void Shuffle<T>(this IList<T> list) {
+            int n = list.Count;
+            while (n > 1) {
+                n--;
+                int k = Random.Next(n + 1);
+                T value = list[k];
+                list[k] = list[n];
+                list[n] = value;
+            }
+        }
+
     }
 }

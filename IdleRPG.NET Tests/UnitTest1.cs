@@ -59,17 +59,30 @@ namespace Tests {
         //    world.Evilness(world.Players, world.Players);
         //}
 
+        //[Test]
+        //public void TestCollisionFight() {
+        //    World world = new World();
+        //    for (int p = 0; p < 10; p++) {
+        //        Player player = new Player() { Name = p.ToString(), Level = p * 5, TTL = p * 200 };
+        //        foreach (var key in player.Items.Keys) {
+        //            player.Items[key].Level = new Random().Next(10);
+        //        }
+        //        world.Players.Add(player);
+        //    }
+        //    world.ChallengeOpp(world.Players[5]);
+        //}
+
         [Test]
-        public void TestCollisionFight() {
+        public void TestTeamBattle() {
             World world = new World();
             for (int p = 0; p < 10; p++) {
                 Player player = new Player() { Name = p.ToString(), Level = p * 5, TTL = p * 200 };
                 foreach (var key in player.Items.Keys) {
-                    player.Items[key].Level = new Random().Next(10);
+                    player.Items[key].Level = new System.Random().Next(10);
                 }
                 world.Players.Add(player);
             }
-            world.ChallengeOpp(world.Players[5]);
+            world.TeamBattle(world.Players);
         }
     }
 }
