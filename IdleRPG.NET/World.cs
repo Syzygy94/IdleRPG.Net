@@ -603,12 +603,12 @@ namespace IdleRPG.NET {
 
             List<Player> pickedPlayers = new List<Player>();
 
-            while (((List<Player>)Quest["players"]).Count < 4) {
+            while (pickedPlayers.Count < 4) {
                 Player p = players[Random.Next(players.Count)];
                 players.Remove(p);
                 pickedPlayers.Add(p);
-                ((List<Player>)Quest["players"]).Add(p);
             }
+            Quest["players"] = pickedPlayers;
 
             // TODO: Need to perform a quest event lookup here after implementing loading of events from text file.
             string quest = string.Empty;
