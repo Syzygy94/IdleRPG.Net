@@ -36,5 +36,24 @@ namespace IdleRPG.NET {
             CreateTime = DateTime.Now;
             LastLogin = DateTime.Now;
         }
+
+        public static bool operator ==(Player p1, Player p2) {
+            return p1.Name == p2.Name && p1.Class == p2.Class && p1.Level == p2.Level && p1.UHost == p2.UHost && p1.Pos == p2.Pos;
+        }
+
+        public static bool operator !=(Player p1, Player p2) {
+            return p1.Name != p2.Name || p1.Class != p2.Class || p1.Level != p2.Level || p1.UHost != p2.UHost || p1.Pos == p2.Pos;
+        }
+
+        public override bool Equals(object obj) {
+            if (obj == null || !(obj is Player))
+                return false;
+
+            Player p = (Player)obj;
+            return Name == p.Name && Class == p.Class && Level == p.Level && UHost == p.UHost && Pos == p.Pos;
+        }
+
+        public override int GetHashCode() =>
+            HashCode.Combine(Name, Class, Level, UHost, Pos);
     }
 }
