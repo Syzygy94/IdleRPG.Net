@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -9,10 +10,23 @@ namespace IdleRPG.NET {
 
         public Dictionary<Pos, List<Item>> MapItems { get; private set; }
         public List<Player> Players { get; private set; }
+        public DateTime LastTime { get; private set; }
+        public Hashtable Quest { get; private set; }
 
         public World() {
             MapItems = new Dictionary<Pos, List<Item>>();
             Players = new List<Player>();
+            LastTime = DateTime.MinValue;
+            Quest = new Hashtable()
+            {
+                {"players", new List<Player>() },
+                {"pos1", new Pos(0,0) },
+                {"pos2", new Pos(0,0) },
+                {"questTime", DateTime.Now.AddSeconds(Random.Next(21600)) },
+                {"text", string.Empty },
+                {"type", 1 },
+                {"stage", 1 }
+            };
         }
 
         public void FindItem(Player p) {
@@ -466,6 +480,119 @@ namespace IdleRPG.NET {
             }
         }
 
+        public void MovePlayers(List<Player> online) {
+            if (LastTime == DateTime.MinValue)
+                return;
+
+            if (online == null || online.Count == 0)
+                return;
+
+            for (int i = 0; i < Config.Tick; i++) {
+                Dictionary<Pos, Hashtable> positions = new Dictionary<Pos, Hashtable>();
+
+                if ((int)Quest["type"] == 2 && ((List<Player>)Quest["players"]).Count > 0) {
+                    bool stageFinished = true;
+                    foreach (Player p in (List<Player>)Quest["players"]) {
+                        if ((int)Quest["stage"] == 1)
+                            if (Players[Players.IndexOf(p)].Pos != (Pos)Quest["pos1"]) {
+                                stageFinished = false;
+                                break;
+                            } else
+                                if (Players[Players.IndexOf(p)].Pos != (Pos)Quest["pos2"]) {
+                                stageFinished = false;
+                                break;
+                            }
+                    }
+                    if ((int)Quest["stage"] == 1 && stageFinished)
+                        Quest["stage"] = 2;
+                    else if ((int)Quest["stage"] == 2 && stageFinished) {
+                        ChanMsg($"{((List<Player>)Quest["players"])[0].Name}, {((List<Player>)Quest["players"])[1].Name}, " +
+                            $"{((List<Player>)Quest["players"])[2].Name}, and {((List<Player>)Quest["players"])[3].Name} " +
+                            $"have completed their journey! 25% of their burden is eliminated.");
+                        foreach (Player p in (List<Player>)Quest["players"])
+                            Players[Players.IndexOf(p)].TTL = (int)(Players[Players.IndexOf(p)].TTL * .75);
+                        Quest["players"] = new List<Player>();
+                        Quest["questTime"] = DateTime.Now.AddSeconds(21600);
+                        Quest["type"] = 1;
+                    } else {
+                        List<Player> players = online.Where(x => !((List<Player>)Quest["players"]).Any(y => y.Equals(x))).ToList();
+                        foreach (Player player in players) {
+                            Player p = Players[Players.IndexOf(player)];
+                            p.Pos.X += Random.Next(3) - 1;
+                            p.Pos.Y += Random.Next(3) - 1;
+                            p.Pos.X = p.Pos.X > Config.MapX ? 0 : p.Pos.X;
+                            p.Pos.Y = p.Pos.Y > Config.MapY ? 0 : p.Pos.Y;
+                            p.Pos.X = p.Pos.X < 0 ? Config.MapX : p.Pos.X;
+                            p.Pos.Y = p.Pos.Y < 0 ? Config.MapY : p.Pos.Y;
+
+                            if (positions.ContainsKey(p.Pos) && (bool)positions[p.Pos]["battled"] == false) {
+                                if (((Player)positions[p.Pos]["player"]).Admin && p.Admin == false && Random.Next(100) < 1)
+                                    ChanMsg($"{p.Name} encounters {((Player)positions[p.Pos]["player"]).Name} and bows humbly.");
+                                if (Random.Next(online.Count) < 1) {
+                                    positions[p.Pos]["battled"] = true;
+                                    CollisionFight(p, (Player)positions[p.Pos]["player"]);
+                                }
+                            } else
+                                positions[p.Pos] = new Hashtable() { { "battled", false }, { "player", p } };
+                        }
+                        foreach (Player player in (List<Player>)Quest["players"]) {
+                            Player p = Players[Players.IndexOf(player)];
+                            if ((int)Quest["stage"] == 1) {
+                                if (Random.Next(100) < 1) {
+                                    if (p.Pos.X != ((Pos)Quest["pos1"]).X)
+                                        p.Pos.X += p.Pos.X < ((Pos)Quest["pos1"]).X ? 1 : -1;
+                                    if (p.Pos.Y != ((Pos)Quest["pos1"]).Y)
+                                        p.Pos.Y += p.Pos.Y < ((Pos)Quest["pos1"]).Y ? 1 : -1;
+                                }
+                            } else if ((int)Quest["stage"] == 2) {
+                                if (Random.Next(100) < 1) {
+                                    if (p.Pos.X != ((Pos)Quest["pos2"]).X)
+                                        p.Pos.X += p.Pos.X < ((Pos)Quest["pos2"]).X ? 1 : -1;
+                                    if (p.Pos.Y != ((Pos)Quest["pos2"]).Y)
+                                        p.Pos.Y += p.Pos.Y < ((Pos)Quest["pos2"]).Y ? 1 : -1;
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    foreach (Player player in online) {
+                        Player p = Players[Players.IndexOf(player)];
+                        p.Pos.X += Random.Next(3) - 1;
+                        p.Pos.Y += Random.Next(3) - 1;
+                        p.Pos.X = p.Pos.X > Config.MapX ? 0 : p.Pos.X;
+                        p.Pos.Y = p.Pos.Y > Config.MapY ? 0 : p.Pos.Y;
+                        p.Pos.X = p.Pos.X < 0 ? Config.MapX : p.Pos.X;
+                        p.Pos.Y = p.Pos.Y < 0 ? Config.MapY : p.Pos.Y;
+
+                        if (positions.ContainsKey(p.Pos) && (bool)positions[p.Pos]["battled"] == false) {
+                            if (((Player)positions[p.Pos]["player"]).Admin && p.Admin == false && Random.Next(100) < 1)
+                                ChanMsg($"{p.Name} encounters {((Player)positions[p.Pos]["player"]).Name} and bows humbly.");
+                            if (Random.Next(online.Count) < 1) {
+                                positions[p.Pos]["battled"] = true;
+                                CollisionFight(p, (Player)positions[p.Pos]["player"]);
+                            }
+                        } else
+                            positions[p.Pos] = new Hashtable() { { "battled", false }, { "player", p } };
+                    }
+                }
+
+                foreach (Player player in online) {
+                    Player p = Players[Players.IndexOf(player)];
+                    if (MapItems.ContainsKey(p.Pos)) {
+                        foreach (Item item in MapItems[p.Pos].ToList()) {
+                            if (item.Level > p.Items[item.ItemType].Level) {
+                                ExchangeItem(p, item);
+                                MapItems[p.Pos].Remove(item);
+                                break;
+                            }
+                        }
+                        if (MapItems[p.Pos].Count == 0)
+                            MapItems.Remove(p.Pos);
+                    }
+                }
+            }
+        }
+
         private void LevelUp(Player p) {
             p.Level += 1;
             p.TTL = TTL(p.Level);
@@ -591,6 +718,5 @@ namespace IdleRPG.NET {
                 list[n] = value;
             }
         }
-
     }
 }

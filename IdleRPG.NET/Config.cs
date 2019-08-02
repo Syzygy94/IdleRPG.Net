@@ -12,5 +12,6 @@ namespace IdleRPG.NET {
         public static int MapX = 500;
         public static int MapY = 500;
         public static string PrimNick = "IdleRPG";
+        public static int Tick = 3;
     }
 }
