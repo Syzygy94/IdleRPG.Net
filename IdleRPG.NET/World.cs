@@ -595,6 +595,32 @@ namespace IdleRPG.NET {
             }
         }
 
+        public void CreateQuest(List<Player> online) {
+            List<Player> players = online.Where(p => Players[Players.IndexOf(p)].Level > Config.QuestLevel && (int)DateTime.Now.Subtract(Players[Players.IndexOf(p)].LastLogin).TotalSeconds > 36000).ToList();
+
+            if (players.Count < 4)
+                return;
+
+            List<Player> pickedPlayers = new List<Player>();
+
+            while (((List<Player>)Quest["players"]).Count < 4) {
+                Player p = players[Random.Next(players.Count)];
+                players.Remove(p);
+                pickedPlayers.Add(p);
+                ((List<Player>)Quest["players"]).Add(p);
+            }
+
+            // TODO: Need to perform a quest event lookup here after implementing loading of events from text file.
+            string quest = string.Empty;
+            if (quest.Substring(0, 2) == "Q1") {
+                Quest["text"] = quest.Substring(3);
+                Quest["type"] = 1;
+                Quest["questTime"] = DateTime.Now.AddSeconds(43200).AddSeconds(Random.Next(43200));
+                Quest["pos1"] = new Pos(0, 0);
+                Quest["pos2"] = new Pos(0, 0);
+            }
+        }
+
         private void LevelUp(Player p) {
             p.Level += 1;
             p.TTL = TTL(p.Level);
