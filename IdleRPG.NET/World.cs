@@ -377,6 +377,60 @@ namespace IdleRPG.NET {
             }
         }
 
+        public void GodSend(List<Player> online) {
+            if (online == null || online.Count == 0)
+                return;
+
+            Player player = Players[Players.IndexOf(online[new Random().Next(online.Count)])];
+            if (new Random().Next(10) < 1) {
+                string itemType = Items[new Random().Next(Items.Length)];
+                switch (itemType) {
+                    case "amulet":
+                        ChanMsg($"{player.Name}'s amulet was blessed by a passing cleric! {player.Name}'s amulet gains 10% effectiveness");
+                        break;
+                    case "charm":
+                        ChanMsg($"{player.Name}'s charm ate a bolt of lightning! {player.Name}'s charm gains 10% effectiveness");
+                        break;
+                    case "weapon":
+                        ChanMsg($"{player.Name} sharpened the edge of their weapon! {player.Name}'s weapon gains 10% effectiveness");
+                        break;
+                    case "tunic":
+                        ChanMsg($"A magician cast a spell of Rigidity on {player.Name}'s tunic! {player.Name}'s tunic gains 10% effectiveness");
+                        break;
+                    case "shield":
+                        ChanMsg($"{player.Name} reinforced their shield with a dragon's scales! {player.Name}'s shield gains 10% effectiveness");
+                        break;
+                    case "set of leggings":
+                        ChanMsg($"The local wizard imbued {player.Name}'s pants with a Spirit of Fortitude! {player.Name}'s set of " +
+                            $"leggings gains 10% effectiveness");
+                        break;
+                    case "pair of gloves":
+                        ChanMsg($"{player.Name} had a seamstress repair all of the holes in their pair of gloves! {player.Name}'s pair " +
+                            $"of gloves gains 10% effectiveness");
+                        break;
+                    case "ring":
+                        ChanMsg($"{player.Name} polished their ring to a bright shine! {player.Name}'s ring gains 10% effectiveness");
+                        break;
+                    case "helm":
+                        ChanMsg($"The local blacksmith fixed all of the dents in {player.Name}'s helm! {player.Name}'s helm gains 10% " +
+                            $"effectiveness");
+                        break;
+                    case "pair of boots":
+                        ChanMsg($"{player.Name} took their pair of boots to a cobbler and had new soles put on! {player.Name}'s pair of " +
+                            $"boots gains 10% effectiveness");
+                        break;
+                }
+                Players[Players.IndexOf(player)].Items[itemType].Level = (int)(player.Items[itemType].Level * 1.1);
+            } else {
+                // TODO: Need to perform a godsend event lookup here after implementing loading of events from text file.
+                string action = string.Empty;
+                int ttl = (int)(((5 + (new Random().Next(8))) / 100.0) * player.TTL);
+                ChanMsg($"{player.Name} {action}! This wondrous godsend has accelerated them {Duration(ttl)} towards level {player.Level + 1}.");
+                Players[Players.IndexOf(player)].TTL -= ttl;
+                ChanMsg($"{player.Name} reaches next level in {Duration(player.TTL)}.");
+            }
+        }
+
         private void LevelUp(Player p) {
             p.Level += 1;
             p.TTL = TTL(p.Level);
