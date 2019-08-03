@@ -94,4 +94,16 @@ namespace IdleRPG.NET {
             return new System.Random((int)(tick & 0xffffffffL) | (int)(tick >> 32)).Next(minValue, maxValue);
         }
     }
+
+    public enum EventType {
+        Calamity,
+        Godsend,
+        Quest1,
+        Quest2
+    }
+
+    public class Event {
+        public EventType EventType { get; set; }
+        public string EventText { get; set; }
+    }
 }
