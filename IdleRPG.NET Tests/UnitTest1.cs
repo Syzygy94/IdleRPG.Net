@@ -72,17 +72,30 @@ namespace Tests {
         //    world.ChallengeOpp(world.Players[5]);
         //}
 
+        //[Test]
+        //public void TestTeamBattle() {
+        //    World world = new World();
+        //    for (int p = 0; p < 10; p++) {
+        //        Player player = new Player() { Name = p.ToString(), Level = p * 5, TTL = p * 200 };
+        //        foreach (var key in player.Items.Keys) {
+        //            player.Items[key].Level = new System.Random().Next(10);
+        //        }
+        //        world.Players.Add(player);
+        //    }
+        //    world.TeamBattle(world.Players);
+        //}
+
         [Test]
-        public void TestTeamBattle() {
+        public void TestCreateQuest() {
             World world = new World();
             for (int p = 0; p < 10; p++) {
-                Player player = new Player() { Name = p.ToString(), Level = p * 5, TTL = p * 200 };
+                Player player = new Player() { Name = p.ToString(), Pos = new Pos(IdleRPG.NET.Random.Next(Config.MapX), IdleRPG.NET.Random.Next(Config.MapY)), Level = p * 5, TTL = p * 200, LastLogin = DateTime.Now.AddSeconds(-46000) };
                 foreach (var key in player.Items.Keys) {
                     player.Items[key].Level = new System.Random().Next(10);
                 }
                 world.Players.Add(player);
             }
-            world.TeamBattle(world.Players);
+            world.CreateQuest(world.Players);
         }
     }
 }

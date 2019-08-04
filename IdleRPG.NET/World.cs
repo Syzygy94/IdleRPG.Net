@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace IdleRPG.NET {
     public class World {
@@ -12,6 +13,7 @@ namespace IdleRPG.NET {
         public List<Player> Players { get; private set; }
         public DateTime LastTime { get; private set; }
         public Hashtable Quest { get; private set; }
+        public List<Event> AllEvents { get; private set; }
 
         public World() {
             MapItems = new Dictionary<Pos, List<Item>>();
@@ -27,6 +29,7 @@ namespace IdleRPG.NET {
                 {"type", 1 },
                 {"stage", 1 }
             };
+            AllEvents = Utilities.LoadEvents();
         }
 
         public void FindItem(Player p) {
@@ -253,11 +256,11 @@ namespace IdleRPG.NET {
         }
 
         public void ProcessItems() {
-            DateTime curTime = DateTime.Now;
+            DateTime currTime = DateTime.Now;
             foreach (Pos pos in MapItems.Keys.ToList()) {
                 foreach (Item item in MapItems[pos].ToList()) {
                     int ttl = Config.RPItemBase * item.Level;
-                    if (item.Age.AddSeconds(ttl).Ticks <= curTime.Ticks) {
+                    if (item.Age.AddSeconds(ttl).Ticks <= currTime.Ticks) {
                         item.Age = item.Age.AddSeconds(ttl);
                         DowngradeItem(item);
                         if (item.Level == 0)
@@ -610,15 +613,34 @@ namespace IdleRPG.NET {
             }
             Quest["players"] = pickedPlayers;
 
-            // TODO: Need to perform a quest event lookup here after implementing loading of events from text file.
-            string quest = string.Empty;
-            if (quest.Substring(0, 2) == "Q1") {
-                Quest["text"] = quest.Substring(3);
+            List<Event> events = AllEvents.Where(e => e.EventType == EventType.Quest1 || e.EventType == EventType.Quest2).ToList();
+
+            Event quest = events[Random.Next(events.Count)];
+            DateTime currTime = DateTime.Now;
+            if (quest.EventType == EventType.Quest1) {
+                Quest["text"] = quest.EventText;
                 Quest["type"] = 1;
-                Quest["questTime"] = DateTime.Now.AddSeconds(43200).AddSeconds(Random.Next(43200));
+                Quest["questTime"] = currTime.AddSeconds(43200).AddSeconds(Random.Next(43200));
                 Quest["pos1"] = new Pos(0, 0);
                 Quest["pos2"] = new Pos(0, 0);
+            } else {
+                Match match = Regex.Match(quest.EventText, @"(\d+) (\d+) (\d+) (\d+) (.*)");
+                Quest["pos1"] = new Pos(int.Parse(match.Groups[1].Value), int.Parse(match.Groups[2].Value));
+                Quest["pos2"] = new Pos(int.Parse(match.Groups[3].Value), int.Parse(match.Groups[4].Value));
+                Quest["text"] = match.Groups[5].Value;
+                Quest["type"] = 2;
+                Quest["stage"] = 1;
             }
+
+            if ((int)Quest["type"] == 1)
+                ChanMsg($"{pickedPlayers[0].Name}, {pickedPlayers[1].Name}, {pickedPlayers[2].Name}, and {pickedPlayers[3].Name} have " +
+                    $"been chosen by the gods to {Quest["text"]}. Quest to end in {Duration((int)((DateTime)Quest["questTime"]).Subtract(currTime).TotalSeconds)}.");
+            else if ((int)Quest["type"] == 2)
+                ChanMsg($"{pickedPlayers[0].Name}, {pickedPlayers[1].Name}, {pickedPlayers[2].Name}, and {pickedPlayers[3].Name} have " +
+                    $"been chosen by the gods to {Quest["text"]}. Participants must first reach {((Pos)Quest["pos1"]).ToString()}, then " +
+                    $"{((Pos)Quest["pos2"]).ToString()}.");
+
+            // TODO: Save quest
         }
 
         private void LevelUp(Player p) {
