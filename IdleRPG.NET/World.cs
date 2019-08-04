@@ -385,8 +385,8 @@ namespace IdleRPG.NET {
                 }
                 Players[Players.IndexOf(player)].Items[itemType].Level = (int)(player.Items[itemType].Level * .9);
             } else {
-                // TODO: Need to perform a calamity event lookup here after implementing loading of events from text file.
-                string action = string.Empty;
+                List<Event> events = AllEvents.Where(e => e.EventType == EventType.Calamity).ToList();
+                string action = events[Random.Next(events.Count)].EventText;
                 int ttl = (int)(((5 + (Random.Next(8))) / 100.0) * player.TTL);
                 ChanMsg($"{player.Name} {action}. This terrible calamity has slowed them {Duration(ttl)} from level {player.Level + 1}.");
                 Players[Players.IndexOf(player)].TTL += ttl;
@@ -439,8 +439,8 @@ namespace IdleRPG.NET {
                 }
                 Players[Players.IndexOf(player)].Items[itemType].Level = (int)(player.Items[itemType].Level * 1.1);
             } else {
-                // TODO: Need to perform a godsend event lookup here after implementing loading of events from text file.
-                string action = string.Empty;
+                List<Event> events = AllEvents.Where(e => e.EventType == EventType.Godsend).ToList();
+                string action = events[Random.Next(events.Count)].EventText;
                 int ttl = (int)(((5 + (Random.Next(8))) / 100.0) * player.TTL);
                 ChanMsg($"{player.Name} {action}! This wondrous godsend has accelerated them {Duration(ttl)} towards level {player.Level + 1}.");
                 Players[Players.IndexOf(player)].TTL -= ttl;
