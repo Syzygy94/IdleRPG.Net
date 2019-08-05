@@ -17,6 +17,7 @@ namespace IdleRPG.NET {
         public int LastFight { get; set; }
         public string Align { get; set; }
         public int Idled { get; set; }
+        public string Nick { get; set; }
         public string UHost { get; set; }
         public bool Online { get; set; }
         public Pos Pos { get; set; }
@@ -38,11 +39,11 @@ namespace IdleRPG.NET {
         }
 
         public static bool operator ==(Player p1, Player p2) {
-            return p1.Name == p2.Name && p1.Class == p2.Class && p1.Level == p2.Level && p1.UHost == p2.UHost && p1.Pos == p2.Pos;
+            return p1.Nick == p2.Nick && p1.Name == p2.Name && p1.Class == p2.Class && p1.Level == p2.Level && p1.UHost == p2.UHost && p1.Pos == p2.Pos;
         }
 
         public static bool operator !=(Player p1, Player p2) {
-            return p1.Name != p2.Name || p1.Class != p2.Class || p1.Level != p2.Level || p1.UHost != p2.UHost || p1.Pos == p2.Pos;
+            return p1.Nick != p2.Nick || p1.Name != p2.Name || p1.Class != p2.Class || p1.Level != p2.Level || p1.UHost != p2.UHost || p1.Pos == p2.Pos;
         }
 
         public override bool Equals(object obj) {
@@ -50,10 +51,10 @@ namespace IdleRPG.NET {
                 return false;
 
             Player p = (Player)obj;
-            return Name == p.Name && Class == p.Class && Level == p.Level && UHost == p.UHost && Pos == p.Pos;
+            return Nick == p.Nick && Name == p.Name && Class == p.Class && Level == p.Level && UHost == p.UHost && Pos == p.Pos;
         }
 
         public override int GetHashCode() =>
-            HashCode.Combine(Name, Class, Level, UHost, Pos);
+            HashCode.Combine(Nick, Name, Class, Level, UHost, Pos);
     }
 }

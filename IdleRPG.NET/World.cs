@@ -776,6 +776,46 @@ namespace IdleRPG.NET {
                 Tournament.TournamentTime = DateTime.Now.AddSeconds(30);
         }
 
+        public void QuestPenaltyCheck(Player player) {
+            if (Quest["players"] != null && ((List<Player>)Quest["players"]).Count > 0) {
+                foreach (Player quester in (List<Player>)Quest["players"]) {
+                    if (quester == player) {
+                        ChanMsg($"{Players[Players.IndexOf(player)].Name}'s prudence and self-regard has brought the wrath of the gods upon the realm. " +
+                            $"All your great wickedness makes it as if you were heavy with lead, and to tend downwards with great weight and pressure " +
+                            $"towards hell. Therefore have you drawn yourselves 15 steps closer to that gaping maw.");
+                        List<Player> online = Players.Where(p => p.Online).ToList();
+                        if (online is null || online.Count == 0)
+                            return;
+                        foreach (Player p in online) {
+                            int gain = (int)(15 * Math.Pow(Config.RPPenStep, p.Level));
+                            Players[Players.IndexOf(p)].TTL += gain;
+                            Players[Players.IndexOf(p)].Penalties["quest"] += gain;
+                        }
+                        Quest["players"] = new List<Player>();
+                        Quest["questTime"] = DateTime.Now.AddSeconds(43200);
+                        // TODO: Save quest
+                        break;
+                    }
+                }
+            }
+
+            if (Tournament.Players != null && Tournament.Players.Count > 0) {
+                foreach (Player tourney in Tournament.Players) {
+                    if (tourney == player) {
+                        int ttl = (int)(0.10 * Players[Players.IndexOf(player)].TTL);
+                        Players[Players.IndexOf(player)].TTL += ttl;
+                        ChanMsg($"{Players[Players.IndexOf(player)].Name} has disobeyed the gods and declared themsevles unfit for the tournament, " +
+                            $"therefore the remainder of the event shall be cancelled. The tournament participants have conspired to add {Duration(ttl)} " +
+                            $"to {Players[Players.IndexOf(player)].Name}'s time to level {Players[Players.IndexOf(player)].Level + 1}. Another tournament " +
+                            $"will begin within the hour!");
+                        Tournament.Players = new List<Player>();
+                        Tournament.TournamentTime = DateTime.Now.AddSeconds(1800).AddSeconds(Random.Next(1800));
+                        break;
+                    }
+                }
+            }
+        }
+
         private void LevelUp(Player p) {
             p.Level += 1;
             p.TTL = TTL(p.Level);
