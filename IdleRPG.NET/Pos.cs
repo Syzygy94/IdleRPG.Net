@@ -23,7 +23,7 @@ namespace IdleRPG.NET {
         }
 
         public override bool Equals(object obj) {
-            if (obj == null || !(obj is Pos))
+            if (obj is null || !(obj is Pos))
                 return false;
 
             Pos pos = (Pos)obj;

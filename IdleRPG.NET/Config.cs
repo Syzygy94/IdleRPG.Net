@@ -14,5 +14,6 @@ namespace IdleRPG.NET {
         public static string PrimNick = "IdleRPG";
         public static int Tick = 3;
         public static int QuestLevel = 1;
+        public static int TournamentLevel = 1;
     }
 }

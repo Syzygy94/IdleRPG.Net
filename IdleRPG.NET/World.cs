@@ -14,6 +14,7 @@ namespace IdleRPG.NET {
         public DateTime LastTime { get; private set; }
         public Hashtable Quest { get; private set; }
         public List<Event> AllEvents { get; private set; }
+        public Tournament Tournament { get; private set; }
 
         public World() {
             MapItems = new Dictionary<Pos, List<Item>>();
@@ -30,6 +31,7 @@ namespace IdleRPG.NET {
                 {"stage", 1 }
             };
             AllEvents = Utilities.LoadEvents();
+            Tournament = new Tournament();
         }
 
         public void FindItem(Player p) {
@@ -104,7 +106,7 @@ namespace IdleRPG.NET {
                 return;
 
             List<Player> opps = Players.Where(player => player != p).ToList();
-            if (opps == null || opps.Count == 0)
+            if (opps is null || opps.Count == 0)
                 return;
 
             Player opp = Random.Next(opps.Count) < 1 ? new Player() { Name = Config.PrimNick } : Players[Players.IndexOf(opps[Random.Next(opps.Count)])];
@@ -511,8 +513,7 @@ namespace IdleRPG.NET {
                     if ((int)Quest["stage"] == 1 && stageFinished)
                         Quest["stage"] = 2;
                     else if ((int)Quest["stage"] == 2 && stageFinished) {
-                        ChanMsg($"{((List<Player>)Quest["players"])[0].Name}, {((List<Player>)Quest["players"])[1].Name}, " +
-                            $"{((List<Player>)Quest["players"])[2].Name}, and {((List<Player>)Quest["players"])[3].Name} " +
+                        ChanMsg($"{string.Join(", ", ((List<Player>)Quest["players"]).Select(p => p.Name).ToArray(), 0, 3)}, and {((List<Player>)Quest["players"])[3].Name} " +
                             $"have completed their journey! 25% of their burden is eliminated.");
                         foreach (Player p in (List<Player>)Quest["players"])
                             Players[Players.IndexOf(p)].TTL = (int)(Players[Players.IndexOf(p)].TTL * .75);
@@ -633,14 +634,146 @@ namespace IdleRPG.NET {
             }
 
             if ((int)Quest["type"] == 1)
-                ChanMsg($"{pickedPlayers[0].Name}, {pickedPlayers[1].Name}, {pickedPlayers[2].Name}, and {pickedPlayers[3].Name} have " +
+                ChanMsg($"{string.Join(", ", pickedPlayers.Select(p => p.Name).ToArray(), 0, 3)}, and {pickedPlayers[3].Name} have " +
                     $"been chosen by the gods to {Quest["text"]}. Quest to end in {Duration((int)((DateTime)Quest["questTime"]).Subtract(currTime).TotalSeconds)}.");
             else if ((int)Quest["type"] == 2)
-                ChanMsg($"{pickedPlayers[0].Name}, {pickedPlayers[1].Name}, {pickedPlayers[2].Name}, and {pickedPlayers[3].Name} have " +
+                ChanMsg($"{string.Join(", ", pickedPlayers.Select(p => p.Name).ToArray(), 0, 3)}, and {pickedPlayers[3].Name} have " +
                     $"been chosen by the gods to {Quest["text"]}. Participants must first reach {((Pos)Quest["pos1"]).ToString()}, then " +
                     $"{((Pos)Quest["pos2"]).ToString()}.");
 
             // TODO: Save quest
+        }
+
+        public void CreateTournament(List<Player> online) {
+            List<Player> players = online.Where(p => Players[Players.IndexOf(p)].Level > Config.TournamentLevel && (int)DateTime.Now.Subtract(Players[Players.IndexOf(p)].LastLogin).TotalSeconds > 14400).ToList();
+
+            if (players.Count < 16) {
+                if (Tournament.TournamentCount == 0) {
+                    Tournament.TournamentTime = DateTime.Now.AddSeconds(13500);
+                    Tournament.TournamentCount = 1;
+                } else {
+                    Tournament.TournamentTime = DateTime.Now.AddSeconds(72900);
+                    Tournament.TournamentCount = 0;
+                }
+                return;
+            }
+
+            Tournament.Players = new List<Player>();
+
+            while (Tournament.Players.Count < 16) {
+                Player p = players[Random.Next(players.Count)];
+                players.Remove(p);
+                Tournament.Players.Add(p);
+            }
+
+            ChanMsg($"{string.Join(", ", Tournament.Players.Select(p => p.Name))} have been chosen by the gods to participate in the royal tournament.");
+            Tournament.Round = 1;
+            Tournament.Battle = 1;
+            Tournament.LowestRoll = 31337;
+            Tournament.Players.Shuffle();
+            Tournament.TournamentTime = DateTime.Now.AddSeconds(15);
+        }
+
+        public void TournamentBattle() {
+            int p1 = (Tournament.Battle * 2) - 2;
+            int p2 = p1 + 1;
+            int p1Sum = ItemSum(Tournament.Players[p1]);
+            int p2Sum = ItemSum(Tournament.Players[p2]);
+            int p1Roll = Random.Next(p1Sum - 1);
+            int p2Roll = Random.Next(p2Sum - 1);
+            int winner, loser;
+
+            if (p1Roll >= p2Roll) {
+                winner = p1;
+                loser = p2;
+                if (Tournament.LowestRoll > p2Roll) {
+                    Tournament.LowestRoll = p2Roll;
+                    Tournament.LowestRoller = Tournament.Players[p2];
+                }
+            } else {
+                winner = p2;
+                loser = p1;
+                if (Tournament.LowestRoll > p1Roll) {
+                    Tournament.LowestRoll = p1Roll;
+                    Tournament.LowestRoller = Tournament.Players[p1];
+                }
+            }
+
+            ChanMsg($"Tournament Round {Tournament.Round}, Fight {Tournament.Battle}: {Tournament.Players[p1].Name} [{p1Roll}/{p1Sum}] vs " +
+                $"{Tournament.Players[p2].Name} [{p2Roll}/{p2Sum}] ... {Tournament.Players[winner].Name} advances!");
+
+            if (Tournament.Players.Count == 2) {
+                int ttl = (int)(5 + (Random.Next(5) / 100.0) * Players[Players.IndexOf(Tournament.Players[loser])].TTL);
+                ChanMsg($"{Players[Players.IndexOf(Tournament.Players[loser])].Name} receives an honorable mention! As a reward for their " +
+                    $"semi-heroic efforts, {Duration(ttl)} is removed from their time toward level " +
+                    $"{Players[Players.IndexOf(Tournament.Players[loser])].Level + 1}.");
+                Players[Players.IndexOf(Tournament.Players[loser])].TTL -= ttl;
+            }
+
+            Tournament.Players.RemoveAt(loser);
+            Tournament.Battle += 1;
+
+            if (Tournament.Battle > (Tournament.Players.Count / 2)) {
+                Tournament.Round += 1;
+                Tournament.Battle = 1;
+                if (Tournament.Players.Count > 1)
+                    ChanMsg($"{string.Join(", ", Tournament.Players.Select(p => p.Name))} advance to round {Tournament.Round} of the royal tournament.");
+
+                Tournament.Players.Shuffle();
+            }
+
+            if (Tournament.Players.Count == 1) {
+                int ttl = (int)((10 + (Random.Next(40) / 100.0)) * Players[Players.IndexOf(Tournament.Players[0])].TTL);
+                ChanMsg($"{Tournament.Players[0].Name} has won the royal tournament! AS a reward for their heroic efforts, " +
+                    $"{Duration(ttl)} is removed from their time toward level {Players[Players.IndexOf(Tournament.Players[0])].Level + 1}.");
+                Players[Players.IndexOf(Tournament.Players[0])].TTL -= ttl;
+                ChanMsg($"{Players[Players.IndexOf(Tournament.Players[0])].Name} reaches next level in {Duration(Players[Players.IndexOf(Tournament.Players[0])].TTL)}.");
+                int gain = (int)(Players[Players.IndexOf(Tournament.LowestRoller)].Level * 60) + Random.Next(60);
+                int battleMsg = Random.Next(6);
+                switch (battleMsg) {
+                    case 0:
+                        ChanMsg($"{Tournament.LowestRoller.Name} has tripped over their own feet and rolled an outstanding {Tournament.LowestRoll}. " +
+                            $"{Duration(gain)} is added to {Tournament.LowestRoller.Name}'s timer towards level {Players[Players.IndexOf(Tournament.LowestRoller)].Level + 1}.");
+                        break;
+                    case 1:
+                        ChanMsg($"{Tournament.LowestRoller.Name} fell asleep in the heat of battle, and rolled over onto their opponent for a " +
+                            $"strike of {Tournament.LowestRoll}. {Duration(gain)} is added to {Tournament.LowestRoller.Name}'s timer towards " +
+                            $"level {Players[Players.IndexOf(Tournament.LowestRoller)].Level + 1}.");
+                        break;
+                    case 2:
+                        ChanMsg($"{Tournament.LowestRoller.Name}, the noob, has dropped their weapon and delivered a striking hit of " +
+                            $"{Tournament.LowestRoll} with their belt. {Duration(gain)} is added to {Tournament.LowestRoller.Name}'s timer " +
+                            $"towards level {Players[Players.IndexOf(Tournament.LowestRoller)].Level + 1}.");
+                        break;
+                    case 3:
+                        ChanMsg($"{Tournament.LowestRoller.Name} decided to have a hippy day and stopped to admire the scenery, causing a hit of " +
+                            $"{Tournament.LowestRoll} to their opponent's spleen from laughing at their sissyness.{Duration(gain)} is added to " +
+                            $"{Tournament.LowestRoller.Name}'s timer towards level {Players[Players.IndexOf(Tournament.LowestRoller)].Level + 1}.");
+                        break;
+                    case 4:
+                        ChanMsg($"{Tournament.LowestRoller.Name} ran away in a panic, screaming incoherently about blood and other manly things. " +
+                            $"The extreme upper pitch of this caused {Tournament.LowestRoll} damage. {Duration(gain)} is added to " +
+                            $"{Tournament.LowestRoller.Name}'s timer towards level {Players[Players.IndexOf(Tournament.LowestRoller)].Level + 1}.");
+                        break;
+                    case 5:
+                        ChanMsg($"{Tournament.LowestRoller.Name} didn't read the directions and messed up their helmet, having it on backwards " +
+                            $"during combat. The accidental head-butt caused {Tournament.LowestRoll} damage. {Duration(gain)} is added to " +
+                            $"{Tournament.LowestRoller.Name}'s timer towards level {Players[Players.IndexOf(Tournament.LowestRoller)].Level + 1}.");
+                        break;
+                }
+                Players[Players.IndexOf(Tournament.LowestRoller)].TTL += gain;
+                ChanMsg($"{Tournament.LowestRoller.Name} reaches next level in {Duration(Players[Players.IndexOf(Tournament.LowestRoller)].TTL)}.");
+
+                if (Tournament.TournamentCount == 0) {
+                    Tournament.TournamentTime = DateTime.Now.AddSeconds(13020);
+                    Tournament.TournamentCount = 1;
+                } else {
+                    Tournament.TournamentTime = DateTime.Now.AddSeconds(72420);
+                    Tournament.TournamentCount = 0;
+                }
+                Tournament.Players = new List<Player>();
+            } else
+                Tournament.TournamentTime = DateTime.Now.AddSeconds(30);
         }
 
         private void LevelUp(Player p) {
@@ -728,7 +861,7 @@ namespace IdleRPG.NET {
         }
 
         private int ItemSum(Player user, bool battle = false) {
-            if (user == null)
+            if (user is null)
                 return -1;
 
             int itemSum = 0;
