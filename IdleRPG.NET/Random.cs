@@ -2,47 +2,6 @@
 using System.Security.Cryptography;
 
 namespace IdleRPG.NET {
-    public class Item {
-        public string ItemType { get; set; }
-        public int Level { get; set; }
-        public string Tag { get; set; }
-        public DateTime Age { get; set; }
-    }
-
-    public class Pos {
-        public int X { get; set; }
-        public int Y { get; set; }
-
-        public Pos(int x, int y) {
-            X = x;
-            Y = y;
-        }
-
-        public override string ToString() {
-            return $"({X}, {Y})";
-        }
-
-        public static bool operator ==(Pos pos1, Pos pos2) {
-            return pos1.X == pos2.X && pos1.Y == pos2.Y;
-        }
-
-        public static bool operator !=(Pos pos1, Pos pos2) {
-            return pos1.X != pos2.X || pos1.Y != pos2.Y;
-        }
-
-        public override bool Equals(object obj) {
-            if (obj == null || !(obj is Pos))
-                return false;
-
-            Pos pos = (Pos)obj;
-            return X == pos.X && Y == pos.Y;
-        }
-
-        public override int GetHashCode() {
-            return Tuple.Create(X, Y).GetHashCode();
-        }
-    }
-
     public static class Random {
         /// <summary>
         /// Returns a non-negative random integer.
@@ -93,17 +52,5 @@ namespace IdleRPG.NET {
             long tick = DateTime.Now.Ticks + seed;
             return new System.Random((int)(tick & 0xffffffffL) | (int)(tick >> 32)).Next(minValue, maxValue);
         }
-    }
-
-    public enum EventType {
-        Calamity,
-        Godsend,
-        Quest1,
-        Quest2
-    }
-
-    public class Event {
-        public EventType EventType { get; set; }
-        public string EventText { get; set; }
     }
 }
