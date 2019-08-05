@@ -906,7 +906,7 @@ namespace IdleRPG.NET {
 
             int itemSum = 0;
 
-            if (user.Name == Config.PrimNick) {
+            if (user.Nick == Config.PrimNick) {
                 foreach (Player player in Players)
                     itemSum = itemSum < ItemSum(player) ? ItemSum(player) : itemSum;
                 return itemSum + 1;
