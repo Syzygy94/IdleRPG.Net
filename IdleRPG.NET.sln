@@ -3,9 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.28307.489
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdleRPG.NET", "IdleRPG.NET\IdleRPG.NET.csproj", "{058DA18F-557D-40FC-A540-C0AD64B86EC3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IdleRPG.NET", "IdleRPG.NET\IdleRPG.NET.csproj", "{058DA18F-557D-40FC-A540-C0AD64B86EC3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdleRPG.NET Tests", "IdleRPG.NET Tests\IdleRPG.NET Tests.csproj", "{F2FB0762-1D68-4426-8781-F13B2D4E02FD}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IdleRPG.NET Tests", "IdleRPG.NET Tests\IdleRPG.NET Tests.csproj", "{F2FB0762-1D68-4426-8781-F13B2D4E02FD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdleRPG.NET Bot", "IdleRPG.NET Bot\IdleRPG.NET Bot.csproj", "{CE1B1113-9B18-457D-BF5F-B82DBC0A0095}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{F2FB0762-1D68-4426-8781-F13B2D4E02FD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F2FB0762-1D68-4426-8781-F13B2D4E02FD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F2FB0762-1D68-4426-8781-F13B2D4E02FD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CE1B1113-9B18-457D-BF5F-B82DBC0A0095}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CE1B1113-9B18-457D-BF5F-B82DBC0A0095}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CE1B1113-9B18-457D-BF5F-B82DBC0A0095}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CE1B1113-9B18-457D-BF5F-B82DBC0A0095}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using IrcDotNet;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,17 +10,21 @@ namespace IdleRPG.NET {
         public static readonly string[] Items = { "ring", "amulet", "charm", "weapon", "helm", "tunic", "pair of gloves", "set of leggings", "shield", "pair of boots" };
         public static readonly string[] Penalties = { "quit", "nick", "msg", "part", "kick", "logout", "quest" };
 
-        public Dictionary<Pos, List<Item>> MapItems { get; private set; }
+        public Dictionary<string, List<Item>> MapItems { get; private set; }
         public List<Player> Players { get; private set; }
         public DateTime LastTime { get; private set; }
         public Hashtable Quest { get; private set; }
         public List<Event> AllEvents { get; private set; }
         public Tournament Tournament { get; private set; }
+        public bool Running { get; private set; }
 
-        public World() {
-            MapItems = new Dictionary<Pos, List<Item>>();
-            Players = new List<Player>();
+        private IrcClient IrcClient;
+
+
+        public World(IrcClient ircClient) {
+            MapItems = new Dictionary<string, List<Item>>();
             LastTime = DateTime.MinValue;
+            Players = new List<Player>();
             Quest = new Hashtable()
             {
                 {"players", new List<Player>() },
@@ -32,6 +37,55 @@ namespace IdleRPG.NET {
             };
             AllEvents = Utilities.LoadEvents();
             Tournament = new Tournament();
+            IrcClient = ircClient;
+            Running = true;
+        }
+
+        public void Start() {
+            LastTime = DateTime.Now;
+        }
+
+        public void RPCheck() {
+            List<Player> online = Players.Where(p => p.Online).ToList();
+            if (online is null || online.Count == 0) {
+                LastTime = DateTime.Now;
+                return;
+            }
+
+            List<Player> onlineEvil = online.Where(p => p.Align == "e").ToList();
+            List<Player> onlineGood = online.Where(p => p.Align == "g").ToList();
+
+            if (Random.Next((20 * 86400) / Config.Tick) < online.Count)
+                Hog(online);
+            if (Random.Next((24 * 86400) / Config.Tick) < online.Count)
+                TeamBattle(online);
+            if (Random.Next((8 * 86400) / Config.Tick) < online.Count)
+                Calamity(online);
+            if (Random.Next((4 * 86400) / Config.Tick) < online.Count)
+                GodSend(online);
+            if (Random.Next((8 * 86400) / Config.Tick) < onlineEvil.Count)
+                Evilness(onlineEvil, onlineGood);
+            if (Random.Next((12 * 86400) / Config.Tick) < onlineGood.Count)
+                Goodness(onlineGood);
+
+            MovePlayers(online);
+            ProcessItems();
+
+            if (LastTime.Equals(DateTime.MinValue) == false) {
+                DateTime currTime = DateTime.Now;
+                var channel = IrcClient.Channels.FirstOrDefault(c => c.Name == Config.ChannelName);
+                if (channel != null) {
+                    foreach (Player p in Players) {
+                        if (p.Online && channel.Users.Count > 0 && channel.Users.FirstOrDefault(u => u.User.NickName == p.Nick) != null) {
+                            Players[Players.IndexOf(p)].TTL -= (int)(currTime - LastTime).TotalSeconds;
+                            Players[Players.IndexOf(p)].IdleTime += (int)(currTime - LastTime).TotalSeconds;
+                            if (Players[Players.IndexOf(p)].TTL <= 0)
+                                LevelUp(Players[Players.IndexOf(p)]);
+                        }
+                    }
+                }
+                LastTime = currTime;
+            }
         }
 
         public void FindItem(Player p) {
@@ -95,7 +149,7 @@ namespace IdleRPG.NET {
             if (newItem.Level > p.Items[newItem.ItemType].Level)
                 ExchangeItem(p, newItem);
             else {
-                Notice(p, $"You found a level {newItem.Level} {newItem.ItemType}. Your current {newItem.ItemType} is level " +
+                Notice(p.Nick, $"You found a level {newItem.Level} {newItem.ItemType}. Your current {newItem.ItemType} is level " +
                     $"{p.Items[newItem.ItemType].Level}, so it seems luck is against you. You toss the {newItem.ItemType}.");
                 DropItem(p.Pos, newItem);
             }
@@ -105,11 +159,11 @@ namespace IdleRPG.NET {
             if (p.Level < 25 && Random.Next(4) != 0)
                 return;
 
-            List<Player> opps = Players.Where(player => player != p).ToList();
+            List<Player> opps = Players.Where(x => !x.Equals(p)).ToList();
             if (opps is null || opps.Count == 0)
                 return;
 
-            Player opp = Random.Next(opps.Count) < 1 ? new Player() { Name = Config.PrimNick } : Players[Players.IndexOf(opps[Random.Next(opps.Count)])];
+            Player opp = Random.Next(opps.Count) < 1 ? new Player() { Name = Config.PrimNick, Nick = Config.PrimNick } : Players[Players.IndexOf(opps[Random.Next(opps.Count)])];
             int playerSum = ItemSum(p, true);
             int oppSum = ItemSum(opp, true);
             int playerRoll = Random.Next(playerSum);
@@ -128,15 +182,20 @@ namespace IdleRPG.NET {
                     ChanMsg($"{opp.Name} cries.");
                 } else {
                     int battleMsg = Random.Next(3);
-                    if (battleMsg == 0)
-                        ChanMsg($"{p.Name} [{playerRoll}/{playerSum}] has come upon {opp.Name} [{oppRoll}/{oppSum}] and " +
-                            $"completely messed them up! {Duration(ttl)} is removed from {p.Name}'s clock.");
-                    else if (battleMsg == 1)
-                        ChanMsg($"{p.Name} [{playerRoll}/{playerSum}] has come upon {opp.Name} [{oppRoll}/{oppSum}] and " +
-                            $"rocked it! {Duration(ttl)} is removed from {p.Name}'s clock.");
-                    else if (battleMsg == 2)
-                        ChanMsg($"{p.Name} [{playerRoll}/{playerSum}] has come upon {opp.Name} [{oppRoll}/{oppSum}] and " +
-                            $"gave em what was coming! {Duration(ttl)} is removed from {p.Name}'s clock.");
+                    switch (battleMsg) {
+                        case 0:
+                            ChanMsg($"{p.Name} [{playerRoll}/{playerSum}] has come upon {opp.Name} [{oppRoll}/{oppSum}] and " +
+                                $"completely messed them up! {Duration(ttl)} is removed from {p.Name}'s clock.");
+                            break;
+                        case 1:
+                            ChanMsg($"{p.Name} [{playerRoll}/{playerSum}] has come upon {opp.Name} [{oppRoll}/{oppSum}] and " +
+                                $"rocked it! {Duration(ttl)} is removed from {p.Name}'s clock.");
+                            break;
+                        case 2:
+                            ChanMsg($"{p.Name} [{playerRoll}/{playerSum}] has come upon {opp.Name} [{oppRoll}/{oppSum}] and " +
+                                $"gave em what was coming! {Duration(ttl)} is removed from {p.Name}'s clock.");
+                            break;
+                    }
                 }
                 p.TTL -= ttl;
                 ChanMsg($"{p.Name} reaches next level in {Duration(p.TTL)}.");
@@ -168,15 +227,20 @@ namespace IdleRPG.NET {
                         $"brought bronze weapons to an iron fight! {Duration(ttl)} is added to {p.Name}'s clock.");
                 else {
                     int battleMsg = Random.Next(3);
-                    if (battleMsg == 0)
-                        ChanMsg($"{p.Name} [{playerRoll}/{playerSum}] has come upon {opp.Name} [{oppRoll}/{oppSum}] and " +
-                            $"got flexed on in combat! {Duration(ttl)} is added to {p.Name}'s clock.");
-                    else if (battleMsg == 1)
-                        ChanMsg($"{p.Name} [{playerRoll}/{playerSum}] has come upon {opp.Name} [{oppRoll}/{oppSum}] and " +
-                            $"realized it was a bad decision! {Duration(ttl)} is added to {p.Name}'s clock.");
-                    else if (battleMsg == 2)
-                        ChanMsg($"{p.Name} [{playerRoll}/{playerSum}] has come upon {opp.Name} [{oppRoll}/{oppSum}] and " +
-                            $"didn't wake up till the next morning! {Duration(ttl)} is added to {p.Name}'s clock.");
+                    switch (battleMsg) {
+                        case 0:
+                            ChanMsg($"{p.Name} [{playerRoll}/{playerSum}] has come upon {opp.Name} [{oppRoll}/{oppSum}] and " +
+                                $"got flexed on in combat! {Duration(ttl)} is added to {p.Name}'s clock.");
+                            break;
+                        case 1:
+                            ChanMsg($"{p.Name} [{playerRoll}/{playerSum}] has come upon {opp.Name} [{oppRoll}/{oppSum}] and " +
+                                $"realized it was a bad decision! {Duration(ttl)} is added to {p.Name}'s clock.");
+                            break;
+                        case 2:
+                            ChanMsg($"{p.Name} [{playerRoll}/{playerSum}] has come upon {opp.Name} [{oppRoll}/{oppSum}] and " +
+                                $"didn't wake up till the next morning! {Duration(ttl)} is added to {p.Name}'s clock.");
+                            break;
+                    }
                 }
                 p.TTL += ttl;
                 ChanMsg($"{p.Name} reaches next level in {Duration(p.TTL)}.");
@@ -202,15 +266,20 @@ namespace IdleRPG.NET {
                     ChanMsg($"{opp.Name} cries.");
                 } else {
                     int battleMsg = Random.Next(3);
-                    if (battleMsg == 0)
-                        ChanMsg($"{p.Name} [{playerRoll}/{playerSum}] has come upon {opp.Name} [{oppRoll}/{oppSum}] and " +
-                            $"completely messed them up! {Duration(ttl)} is removed from {p.Name}'s clock.");
-                    else if (battleMsg == 1)
-                        ChanMsg($"{p.Name} [{playerRoll}/{playerSum}] has come upon {opp.Name} [{oppRoll}/{oppSum}] and " +
-                            $"rocked it! {Duration(ttl)} is removed from {p.Name}'s clock.");
-                    else if (battleMsg == 2)
-                        ChanMsg($"{p.Name} [{playerRoll}/{playerSum}] has come upon {opp.Name} [{oppRoll}/{oppSum}] and " +
-                            $"gave em what was coming! {Duration(ttl)} is removed from {p.Name}'s clock.");
+                    switch (battleMsg) {
+                        case 0:
+                            ChanMsg($"{p.Name} [{playerRoll}/{playerSum}] has come upon {opp.Name} [{oppRoll}/{oppSum}] and " +
+                                $"completely messed them up! {Duration(ttl)} is removed from {p.Name}'s clock.");
+                            break;
+                        case 1:
+                            ChanMsg($"{p.Name} [{playerRoll}/{playerSum}] has come upon {opp.Name} [{oppRoll}/{oppSum}] and " +
+                                $"rocked it! {Duration(ttl)} is removed from {p.Name}'s clock.");
+                            break;
+                        case 2:
+                            ChanMsg($"{p.Name} [{playerRoll}/{playerSum}] has come upon {opp.Name} [{oppRoll}/{oppSum}] and " +
+                                $"gave em what was coming! {Duration(ttl)} is removed from {p.Name}'s clock.");
+                            break;
+                    }
                 }
                 p.TTL -= ttl;
                 ChanMsg($"{p.Name} reaches next level in {Duration(p.TTL)}.");
@@ -242,15 +311,20 @@ namespace IdleRPG.NET {
                         $"brought bronze weapons to an iron fight! {Duration(ttl)} is added to {p.Name}'s clock.");
                 else {
                     int battleMsg = Random.Next(3);
-                    if (battleMsg == 0)
-                        ChanMsg($"{p.Name} [{playerRoll}/{playerSum}] has come upon {opp.Name} [{oppRoll}/{oppSum}] and " +
-                            $"got flexed on in combat! {Duration(ttl)} is added to {p.Name}'s clock.");
-                    else if (battleMsg == 1)
-                        ChanMsg($"{p.Name} [{playerRoll}/{playerSum}] has come upon {opp.Name} [{oppRoll}/{oppSum}] and " +
-                            $"realized it was a bad decision! {Duration(ttl)} is added to {p.Name}'s clock.");
-                    else if (battleMsg == 2)
-                        ChanMsg($"{p.Name} [{playerRoll}/{playerSum}] has come upon {opp.Name} [{oppRoll}/{oppSum}] and " +
-                            $"didn't wake up till the next morning! {Duration(ttl)} is added to {p.Name}'s clock.");
+                    switch (battleMsg) {
+                        case 0:
+                            ChanMsg($"{p.Name} [{playerRoll}/{playerSum}] has come upon {opp.Name} [{oppRoll}/{oppSum}] and " +
+                                $"got flexed on in combat! {Duration(ttl)} is added to {p.Name}'s clock.");
+                            break;
+                        case 1:
+                            ChanMsg($"{p.Name} [{playerRoll}/{playerSum}] has come upon {opp.Name} [{oppRoll}/{oppSum}] and " +
+                                $"realized it was a bad decision! {Duration(ttl)} is added to {p.Name}'s clock.");
+                            break;
+                        case 2:
+                            ChanMsg($"{p.Name} [{playerRoll}/{playerSum}] has come upon {opp.Name} [{oppRoll}/{oppSum}] and " +
+                                $"didn't wake up till the next morning! {Duration(ttl)} is added to {p.Name}'s clock.");
+                            break;
+                    }
                 }
                 p.TTL += ttl;
                 ChanMsg($"{p.Name} reaches next level in {Duration(p.TTL)}.");
@@ -259,10 +333,10 @@ namespace IdleRPG.NET {
 
         public void ProcessItems() {
             DateTime currTime = DateTime.Now;
-            foreach (Pos pos in MapItems.Keys.ToList()) {
+            foreach (string pos in MapItems.Keys.ToList()) {
                 foreach (Item item in MapItems[pos].ToList()) {
                     int ttl = Config.RPItemBase * item.Level;
-                    if (item.Age.AddSeconds(ttl).Ticks <= currTime.Ticks) {
+                    if (item.Age.AddSeconds(ttl).TimeOfDay.TotalSeconds <= currTime.TimeOfDay.TotalSeconds) {
                         item.Age = item.Age.AddSeconds(ttl);
                         DowngradeItem(item);
                         if (item.Level == 0)
@@ -325,7 +399,7 @@ namespace IdleRPG.NET {
                         $"sleeping! {player.Name} leaves an old level {targetPlayer.Items[itemType].Level} {itemType} behind, which " +
                         $"{targetPlayer.Name} then takes.");
                 } else
-                    Notice(player, $"You made to steal {targetPlayer.Name}'s {itemType}, but realized it was a lower level than your " +
+                    Notice(player.Nick, $"You made to steal {targetPlayer.Name}'s {itemType}, but realized it was a lower level than your " +
                         $"own. You creep back into the shadows.");
             } else {
                 int gain = 1 + Random.Next(5);
@@ -486,9 +560,8 @@ namespace IdleRPG.NET {
         }
 
         public void MovePlayers(List<Player> online) {
-            if (LastTime == DateTime.MinValue)
+            if (LastTime.Equals(DateTime.MinValue))
                 return;
-
             if (online == null || online.Count == 0)
                 return;
 
@@ -584,23 +657,23 @@ namespace IdleRPG.NET {
 
                 foreach (Player player in online) {
                     Player p = Players[Players.IndexOf(player)];
-                    if (MapItems.ContainsKey(p.Pos)) {
-                        foreach (Item item in MapItems[p.Pos].ToList()) {
+                    if (MapItems.ContainsKey(p.Pos.ToString())) {
+                        foreach (Item item in MapItems[p.Pos.ToString()].ToList()) {
                             if (item.Level > p.Items[item.ItemType].Level) {
                                 ExchangeItem(p, item);
-                                MapItems[p.Pos].Remove(item);
+                                MapItems[p.Pos.ToString()].Remove(item);
                                 break;
                             }
                         }
-                        if (MapItems[p.Pos].Count == 0)
-                            MapItems.Remove(p.Pos);
+                        if (MapItems[p.Pos.ToString()].Count == 0)
+                            MapItems.Remove(p.Pos.ToString());
                     }
                 }
             }
         }
 
         public void CreateQuest(List<Player> online) {
-            List<Player> players = online.Where(p => Players[Players.IndexOf(p)].Level > Config.QuestLevel && (int)DateTime.Now.Subtract(Players[Players.IndexOf(p)].LastLogin).TotalSeconds > 36000).ToList();
+            List<Player> players = online.Where(p => Players[Players.IndexOf(p)].Level > Config.QuestLevel && (int)(DateTime.Now - Players[Players.IndexOf(p)].LastLogin).TotalSeconds > 36000).ToList();
 
             if (players.Count < 4)
                 return;
@@ -635,7 +708,7 @@ namespace IdleRPG.NET {
 
             if ((int)Quest["type"] == 1)
                 ChanMsg($"{string.Join(", ", pickedPlayers.Select(p => p.Name).ToArray(), 0, 3)}, and {pickedPlayers[3].Name} have " +
-                    $"been chosen by the gods to {Quest["text"]}. Quest to end in {Duration((int)((DateTime)Quest["questTime"]).Subtract(currTime).TotalSeconds)}.");
+                    $"been chosen by the gods to {Quest["text"]}. Quest to end in {Duration((int)((DateTime)Quest["questTime"] - currTime).TotalSeconds)}.");
             else if ((int)Quest["type"] == 2)
                 ChanMsg($"{string.Join(", ", pickedPlayers.Select(p => p.Name).ToArray(), 0, 3)}, and {pickedPlayers[3].Name} have " +
                     $"been chosen by the gods to {Quest["text"]}. Participants must first reach {((Pos)Quest["pos1"]).ToString()}, then " +
@@ -645,7 +718,7 @@ namespace IdleRPG.NET {
         }
 
         public void CreateTournament(List<Player> online) {
-            List<Player> players = online.Where(p => Players[Players.IndexOf(p)].Level > Config.TournamentLevel && (int)DateTime.Now.Subtract(Players[Players.IndexOf(p)].LastLogin).TotalSeconds > 14400).ToList();
+            List<Player> players = online.Where(p => Players[Players.IndexOf(p)].Level > Config.TournamentLevel && (int)(DateTime.Now - Players[Players.IndexOf(p)].LastLogin).TotalSeconds > 14400).ToList();
 
             if (players.Count < 16) {
                 if (Tournament.TournamentCount == 0) {
@@ -816,6 +889,244 @@ namespace IdleRPG.NET {
             }
         }
 
+        public void ParseMessage(IrcUser ircUser, string message) {
+            string[] args = message.Split(" ", StringSplitOptions.RemoveEmptyEntries);
+            if (args.Length > 0) {
+                switch (args[0].ToLower()) {
+                    case "register":
+                        if (Players.Exists(p => p.Nick == ircUser.NickName)) {
+                            PrivMsg(ircUser, $"Sorry, you are already online as {Players.First(p => p.Nick == ircUser.NickName).Name}.");
+                        } else {
+                            if (args.Length < 4 || args[3].Equals(string.Empty)) {
+                                PrivMsg(ircUser, "Try: REGISTER <char name> <password> <class>");
+                                PrivMsg(ircUser, "IE : REGISTER Poseidon MyPassword God Of the Sea");
+                            } else if (args[1] != string.Empty && Players.Exists(p => p.Name.ToLower() == args[1].ToLower()))
+                                PrivMsg(ircUser, "Sorry, that character name is already in use.");
+                            else if (args[1].ToLower() == Config.PrimNick.ToLower())
+                                PrivMsg(ircUser, "Sorry, that character name cannot be registered.");
+                            else if (IrcClient.Channels.FirstOrDefault(c => c.Name == Config.ChannelName) != null && IrcClient.Channels.First(c => c.Name == Config.ChannelName).Users.FirstOrDefault(u => u.User.NickName == ircUser.NickName) == null)
+                                PrivMsg(ircUser, $"Sorry, you're not in {Config.ChannelName}.");
+                            else {
+                                IrcClient.SendRawMessage($"mode {Config.ChannelName} +v {ircUser.NickName}");
+                                Players.Add(new Player()
+                                {
+                                    Name = args[1],
+                                    Class = string.Join(" ", args, 3, args.Length - 3),
+                                    Nick = ircUser.NickName,
+                                    UHost = ircUser.HostName,
+                                    Password = args[2]
+                                });
+                                ChanMsg($"Welcome {ircUser.NickName}'s new player {args[1]}, the " +
+                                    $"{string.Join(" ", args, 3, args.Length - 3)}! Next level in {Duration(Config.RPBase)}.");
+                                PrivMsg(ircUser, $"Success! Account {args[1]} created. You have {Config.RPBase} " +
+                                    $"seconds idleness until you reach level 1.");
+                                PrivMsg(ircUser, "NOTE: The point of the game is to see who can idle the longest. " +
+                                    "As such, talking in the channel, parting, quitting, and changing nicks all penalize you.");
+                            }
+                        }
+                        break;
+                    case "hog":
+                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Admin) {
+                            ChanMsg($"{ircUser.NickName} has summoned the Hand of God.");
+                            Hog(Players.Where(p => p.Online).ToList());
+                        } else
+                            PrivMsg(ircUser, "You don't have access to HOG.");
+                        break;
+                    case "chpass":
+                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Admin) {
+                            if (args.Length < 3)
+                                PrivMsg(ircUser, "Try: CHPASS <char name> <new password>");
+                            else if (Players.Exists(p => p.Name == args[1]) == false)
+                                PrivMsg(ircUser, $"No such character {args[1]}.");
+                            else {
+                                Players.First(p => p.Name == args[1]).Password = args[2];
+                                PrivMsg(ircUser, $"Password for {args[1]} changed.");
+                            }
+                        } else
+                            PrivMsg(ircUser, "You don't have access to CHPASS.");
+                        break;
+                    case "chuser":
+                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Admin) {
+                            if (args.Length < 3)
+                                PrivMsg(ircUser, "Try: CHUSER <char name> <new char name>");
+                            else if (Players.Exists(p => p.Name == args[1]) == false)
+                                PrivMsg(ircUser, $"No such character {args[1]}.");
+                            else if (Players.Exists(p => p.Name == args[1]))
+                                PrivMsg(ircUser, $"Character name {args[1]} is already taken.");
+                            else {
+                                Players.First(p => p.Name == args[1]).Name = args[2];
+                                PrivMsg(ircUser, $"Character name for {args[1]} changed to {args[2]}.");
+                            }
+                        } else
+                            PrivMsg(ircUser, "You don't have access to CHUSER.");
+                        break;
+                    case "chclass":
+                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Admin) {
+                            if (args.Length < 3)
+                                PrivMsg(ircUser, "Try: CHCLASS <char name> <new char class>");
+                            else if (Players.Exists(p => p.Name == args[1]) == false)
+                                PrivMsg(ircUser, $"No such character {args[1]}.");
+                            else {
+                                Players.First(p => p.Name == args[1]).Class = string.Join(" ", args, 2, args.Length - 2);
+                                PrivMsg(ircUser, $"Class for {args[1]} changed to {string.Join(" ", args, 2, args.Length - 2)}.");
+                            }
+                        } else
+                            PrivMsg(ircUser, "You don't have access to CHCLASS.");
+                        break;
+                    case "push":
+                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Admin) {
+                            if (args.Length < 3 || Regex.IsMatch(args[2], @"^\-?\d+$") == false)
+                                PrivMsg(ircUser, "Try: PUSH <char name> <seconds>");
+                            else if (Players.Exists(p => p.Name == args[1]) == false)
+                                PrivMsg(ircUser, $"No such character {args[1]}.");
+                            else if (int.Parse(args[2]) > Players.First(p => p.Name == args[1]).TTL) {
+                                PrivMsg(ircUser, $"Time to level for {args[1]} ({Players.First(p => p.Name == args[1]).TTL}s) is " +
+                                    $"lower than {args[2]}; setting TTL to 0.");
+                                ChanMsg($"{ircUser.NickName} has pushed {args[1]} {Players.First(p => p.Name == args[1]).TTL} seconds " +
+                                    $"towards level {Players.First(p => p.Name == args[1]).Level + 1}.");
+                                Players.First(p => p.Name == args[1]).TTL = 0;
+                            } else {
+                                Players.First(p => p.Name == args[1]).TTL -= int.Parse(args[2]);
+                                ChanMsg($"{ircUser.NickName} has pushed {args[1]} {args[2]} seconds toward level " +
+                                    $"{Players.First(p => p.Name == args[1]).Level + 1}. {args[1]} reaches next level in " +
+                                    $"{Duration(Players.First(p => p.Name == args[1]).TTL)}.");
+                            }
+                        } else
+                            PrivMsg(ircUser, "You don't have access to PUSH.");
+                        break;
+                    case "logout":
+                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Online)
+                            Penalize(ircUser.NickName, "logout");
+                        else
+                            PrivMsg(ircUser, "You are not logged in.");
+                        break;
+                    case "quest":
+                        if (Quest["players"] != null && ((List<Player>)Quest["players"]).Count > 0) {
+                            if ((int)Quest["type"] == 1)
+                                PrivMsg(ircUser, $"{string.Join(", ", ((List<Player>)Quest["players"]).Select(p => p.Name).ToArray(), 0, 3)}, and {((List<Player>)Quest["players"])[3].Name} are " +
+                                    $"on a quest to {Quest["text"]}. Quest to complete in {Duration((int)((DateTime)Quest["questTime"] - DateTime.Now).TotalSeconds)}.");
+                            else if ((int)Quest["type"] == 2)
+                                PrivMsg(ircUser, $"{string.Join(", ", ((List<Player>)Quest["players"]).Select(p => p.Name).ToArray(), 0, 3)}, and {((List<Player>)Quest["players"])[3].Name} are " +
+                                    $"on a quest to {Quest["text"]}. Participants must first reach {((Pos)Quest["pos1"]).ToString()}, then " +
+                                    $"{((Pos)Quest["pos2"]).ToString()}.");
+                        } else
+                            PrivMsg(ircUser, "There is no active quest.");
+                        break;
+                    case "status":
+                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Online) {
+                            if (args.Length > 1) {
+                                if (Players.Exists(p => p.Name == args[1])) {
+                                    Player p = Players.First(player => player.Name == args[1]);
+                                    PrivMsg(ircUser, $"{p.Name}: Level {p.Level} {p.Class}; O{(p.Online ? "n" : "ff")}line; " +
+                                        $"TTL: {Duration(p.TTL)}; Idled: {Duration(p.IdleTime)}; Item Sum: {ItemSum(p)}");
+                                } else
+                                    PrivMsg(ircUser, "No such user.");
+                            } else {
+                                Player p = Players.First(player => player.Nick == ircUser.NickName);
+                                PrivMsg(ircUser, $"{p.Name}: Level {p.Level} {p.Class}; O{(p.Online ? "n" : "ff")}line; " +
+                                    $"TTL: {Duration(p.TTL)}; Idled: {Duration(p.IdleTime)}; Item Sum: {ItemSum(p)}");
+                            }
+                        } else
+                            PrivMsg(ircUser, "You are not logged in.");
+                        break;
+                    case "whoami":
+                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Online) {
+                            Player p = Players.First(player => player.Nick == ircUser.NickName);
+                            PrivMsg(ircUser, $"You are {p.Name}, the level {p.Level} {p.Class}. Next level in {Duration(p.TTL)}.");
+                        } else
+                            PrivMsg(ircUser, "You are not logged in.");
+                        break;
+                    case "newpass":
+                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Online) {
+                            if (args.Length < 2)
+                                PrivMsg(ircUser, "Try: NEWPASS <new password>");
+                            else {
+                                Players.First(p => p.Nick == ircUser.NickName).Password = args[1];
+                                PrivMsg(ircUser, "Your password was changed.");
+                            }
+                        } else
+                            PrivMsg(ircUser, "You are not logged in.");
+                        break;
+                    case "align":
+                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Online) {
+                            if (args.Length < 2 || (args[1].ToLower() != "good" && args[1].ToLower() != "neutral" && args[1].ToLower() != "evil"))
+                                PrivMsg(ircUser, "Try: ALIGN <good|neutral|evil>");
+                            else {
+                                Players.First(player => player.Nick == ircUser.NickName).Align = args[1].Substring(0, 1);
+                                ChanMsg($"{Players.First(player => player.Nick == ircUser.NickName).Name} has changed alignment to: {args[1].ToLower()}.");
+                                PrivMsg(ircUser, $"You alignment was changed to: {args[1].ToLower()}.");
+                            }
+                        } else
+                            PrivMsg(ircUser, "You are not logged in.");
+                        break;
+                    case "login":
+                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Online)
+                            Notice(ircUser.NickName, $"Sorry, you are already online as {Players.First(p => p.Nick == ircUser.NickName).Name}.");
+                        else {
+                            if (args.Length < 3 || args[2].Equals(string.Empty))
+                                Notice(ircUser.NickName, "Try: LOGIN <username> <password>");
+                            else if (Players.Exists(p => p.Name == args[1]) == false)
+                                Notice(ircUser.NickName, "Sorry, no such account name. Note that account names are case sensitive.");
+                            else if (IrcClient.Channels.FirstOrDefault(c => c.Name == Config.ChannelName) != null && IrcClient.Channels.First(c => c.Name == Config.ChannelName).Users.FirstOrDefault(u => u.User.NickName == ircUser.NickName) == null)
+                                Notice(ircUser.NickName, $"Sorry, you're not in {Config.ChannelName}.");
+                            else if (Players.First(p => p.Name == args[1]).Password != args[2])
+                                Notice(ircUser.NickName, "Wrong password.");
+                            else {
+                                IrcClient.SendRawMessage($"mode {Config.ChannelName} +v {ircUser.NickName}");
+                                Player p = Players.First(player => player.Name == args[1]);
+                                p.Online = true;
+                                p.Nick = ircUser.NickName;
+                                p.UHost = ircUser.HostName;
+                                p.LastLogin = DateTime.Now;
+                                ChanMsg($"{args[1]}, the level {p.Level} {p.Class}, is now online from {ircUser.NickName}. " +
+                                    $"Next level in {Duration(p.TTL)}.");
+                                Notice(ircUser.NickName, $"Logon successful. Next level in {Duration(p.TTL)}.");
+                            }
+                        }
+                        break;
+                    case "removeme":
+                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Online) {
+                            Player p = Players.First(player => player.Nick == ircUser.NickName);
+                            PrivMsg(ircUser, $"Account {p.Name} removed.");
+                            ChanMsg($"{ircUser.NickName} removed their account, {p.Name}, the {p.Class}.");
+                            Players.Remove(p);
+                        } else
+                            PrivMsg(ircUser, "You are not logged in.");
+                        break;
+                    default:
+                        PrivMsg(ircUser, "Unknown command.");
+                        break;
+                }
+            }
+        }
+
+        public void Penalize(string nick, string type) {
+            Player p = Players.FirstOrDefault(player => player.Nick == nick);
+
+            if (p != null) {
+                QuestPenaltyCheck(p);
+                int penalty = PenTTL(p.Level);
+                penalty = penalty > Config.LimitPen ? Config.LimitPen : penalty;
+                switch (type) {
+                    case "logout":
+                        Players[Players.IndexOf(p)].Penalties["logout"] += penalty;
+                        Notice(nick, $"Penalty of {Duration(penalty)} added to your timer for LOGOUT command.");
+                        Players[Players.IndexOf(p)].Online = false;
+                        break;
+                    case "msg":
+                        Players[Players.IndexOf(p)].Penalties["msg"] += penalty;
+                        Notice(nick, $"Penalty of {Duration(penalty)} added to your timer for chatting in the channel.");
+                        break;
+                    case "part":
+                        Players[Players.IndexOf(p)].Penalties["part"] += penalty;
+                        Players[Players.IndexOf(p)].Online = false;
+                        Notice(nick, $"Penalty of {Duration(penalty)} added to your timer for leaving the channel.");
+                        break;
+                }
+                Players[Players.IndexOf(p)].TTL += penalty;
+            }
+        }
+
         private void LevelUp(Player p) {
             p.Level += 1;
             p.TTL = TTL(p.Level);
@@ -847,37 +1158,48 @@ namespace IdleRPG.NET {
         }
 
         private void ExchangeItem(Player p, Item item) {
-            if (item.Tag == "a")
-                ChanMsg($"The light of the gods shines down upon {p.Name}! They have found the level {item.Level} " +
-                    $"Mattt's Omniscience Grand Crown! Their enemies fall before them as they anticipate their every move.");
-            else if (item.Tag == "b")
-                ChanMsg($"The light of the gods shines down upon {p.Name}! They have found the level {item.Level} " +
-                    $"Res0's Protectorate Plate Mail! Their enemies cower in fear as their attacks have no effect.");
-            else if (item.Tag == "c")
-                ChanMsg($"The light of the gods shines down upon {p.Name}! They have found the level {item.Level} " +
-                    $"Dwyn's Storm Magic Amulet! Their enemies are swept away by an elemental fury before the war has even begun.");
-            else if (item.Tag == "d")
-                ChanMsg($"The light of the gods shines down upon {p.Name}! They have found the level {item.Level} " +
-                    $"Jotun's Fury Colossal Sword! Their enemies' hatred is brought to a quick end as they arc their wrist, " +
-                    $"dealing the crushing blow.");
-            else if (item.Tag == "e")
-                ChanMsg($"The light of the gods shines down upon {p.Name}! They have found the level {item.Level} " +
-                    $"Drdink's Cane of Blind Rage! Their enemies are tossed aside as they blindly swing their arm around hitting stuff.");
-            else if (item.Tag == "f")
-                ChanMsg($"The light of the gods shines down upon {p.Name}! They have found the level {item.Level} " +
-                    $"Mrquick's Magical Boots of Swiftness! Their enemies are left choking on their dust as they run from them " +
-                    $"very, very quickly.");
-            else if (item.Tag == "g")
-                ChanMsg($"The light of the gods shines down upon {p.Name}! They have found the level {item.Level} " +
-                    $"Jeff's Cluehammer of Doom! Their enemies are left with a sudden and intense clarity of mind... even as they " +
-                    $"relieve them of it.");
-            else if (item.Tag == "h")
-                ChanMsg($"The light of the gods shines down upon {p.Name}! They have found the level {item.Level} " +
-                    $"Juliet's Glorious Ring of Sparkliness! Their enemies are blinded by both its glory and their greed as they " +
-                    $"bring desolation upon them.");
-            else
-                Notice(p, $"You found a level {item.Level} {item.ItemType}! Your current {item.ItemType} is only " +
-                    $"level {p.Items[item.ItemType].Level}, so it seems luck is with you!");
+            switch (item.Tag) {
+                case "a":
+                    ChanMsg($"The light of the gods shines down upon {p.Name}! They have found the level {item.Level} " +
+                        $"Mattt's Omniscience Grand Crown! Their enemies fall before them as they anticipate their every move.");
+                    break;
+                case "b":
+                    ChanMsg($"The light of the gods shines down upon {p.Name}! They have found the level {item.Level} " +
+                        $"Res0's Protectorate Plate Mail! Their enemies cower in fear as their attacks have no effect.");
+                    break;
+                case "c":
+                    ChanMsg($"The light of the gods shines down upon {p.Name}! They have found the level {item.Level} " +
+                        $"Dwyn's Storm Magic Amulet! Their enemies are swept away by an elemental fury before the war has even begun.");
+                    break;
+                case "d":
+                    ChanMsg($"The light of the gods shines down upon {p.Name}! They have found the level {item.Level} " +
+                        $"Jotun's Fury Colossal Sword! Their enemies' hatred is brought to a quick end as they arc their wrist, " +
+                        $"dealing the crushing blow.");
+                    break;
+                case "e":
+                    ChanMsg($"The light of the gods shines down upon {p.Name}! They have found the level {item.Level} " +
+                        $"Drdink's Cane of Blind Rage! Their enemies are tossed aside as they blindly swing their arm around hitting stuff.");
+                    break;
+                case "f":
+                    ChanMsg($"The light of the gods shines down upon {p.Name}! They have found the level {item.Level} " +
+                        $"Mrquick's Magical Boots of Swiftness! Their enemies are left choking on their dust as they run from them " +
+                        $"very, very quickly.");
+                    break;
+                case "g":
+                    ChanMsg($"The light of the gods shines down upon {p.Name}! They have found the level {item.Level} " +
+                        $"Jeff's Cluehammer of Doom! Their enemies are left with a sudden and intense clarity of mind... even as they " +
+                        $"relieve them of it.");
+                    break;
+                case "h":
+                    ChanMsg($"The light of the gods shines down upon {p.Name}! They have found the level {item.Level} " +
+                        $"Juliet's Glorious Ring of Sparkliness! Their enemies are blinded by both its glory and their greed as they " +
+                        $"bring desolation upon them.");
+                    break;
+                default:
+                    Notice(p.Nick, $"You found a level {item.Level} {item.ItemType}! Your current {item.ItemType} is only " +
+                        $"level {p.Items[item.ItemType].Level}, so it seems luck is with you!");
+                    break;
+            }
 
             DropItem(p.Pos, p.Items[item.ItemType]);
             p.Items[item.ItemType] = item;
@@ -885,11 +1207,11 @@ namespace IdleRPG.NET {
 
         private void DropItem(Pos pos, Item item) {
             if (item.Level > 0) {
-                if (MapItems.ContainsKey(pos) == false)
-                    MapItems[pos] = new List<Item>();
+                if (MapItems.ContainsKey(pos.ToString()) == false)
+                    MapItems[pos.ToString()] = new List<Item>();
 
                 item.Age = DateTime.Now;
-                MapItems[pos].Add(item);
+                MapItems[pos.ToString()].Add(item);
             }
         }
 
@@ -922,11 +1244,15 @@ namespace IdleRPG.NET {
         }
 
         private void ChanMsg(string msg) {
-
+            IrcClient.LocalUser.SendMessage(Config.ChannelName, msg);
         }
 
-        private void Notice(Player player, string msg) {
+        private void Notice(string nick, string msg) {
+            IrcClient.LocalUser.SendNotice(nick, msg);
+        }
 
+        private void PrivMsg(IrcUser ircUser, string msg) {
+            IrcClient.LocalUser.SendMessage(ircUser.NickName, msg);
         }
     }
 

@@ -1,11 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp2.1</TargetFramework>
+    <RootNamespace>IdleRPG.NET_Bot</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="IrcDotNet" Version="0.7.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\IdleRPG.NET\IdleRPG.NET.csproj" />
   </ItemGroup>
 
 </Project>

@@ -98,19 +98,19 @@ namespace Tests {
         //    world.CreateQuest(world.Players);
         //}
 
-        [Test]
-        public void TestCreateTournamentAndBattle() {
-            World world = new World();
-            for (int p = 0; p < 17; p++) {
-                Player player = new Player() { Name = p.ToString(), Pos = new Pos(IdleRPG.NET.Random.Next(Config.MapX), IdleRPG.NET.Random.Next(Config.MapY)), Level = p * 5, TTL = p * 200, LastLogin = DateTime.Now.AddSeconds(-46000) };
-                foreach (var key in player.Items.Keys) {
-                    player.Items[key].Level = new System.Random().Next(10);
-                }
-                world.Players.Add(player);
-            }
-            world.CreateTournament(world.Players);
-            while (world.Tournament.Players.Count > 0)
-                world.TournamentBattle();
-        }
+        //[Test]
+        //public void TestCreateTournamentAndBattle() {
+        //    World world = new World();
+        //    for (int p = 0; p < 17; p++) {
+        //        Player player = new Player() { Name = p.ToString(), Pos = new Pos(IdleRPG.NET.Random.Next(Config.MapX), IdleRPG.NET.Random.Next(Config.MapY)), Level = p * 5, TTL = p * 200, LastLogin = DateTime.Now.AddSeconds(-46000) };
+        //        foreach (var key in player.Items.Keys) {
+        //            player.Items[key].Level = new System.Random().Next(10);
+        //        }
+        //        world.Players.Add(player);
+        //    }
+        //    world.CreateTournament(world.Players);
+        //    while (world.Tournament.Players.Count > 0)
+        //        world.TournamentBattle();
+        //}
     }
 }
