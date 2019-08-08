@@ -85,6 +85,13 @@ namespace IdleRPG.NET {
                 }
             }
 
+            if (DateTime.Now > Tournament.TournamentTime) {
+                if (Tournament.Players == null || Tournament.Players.Count == 0)
+                    CreateTournament(online);
+                else
+                    TournamentBattle();
+            }
+
             if (LastTime.Equals(DateTime.MinValue) == false) {
                 DateTime currTime = DateTime.Now;
                 var channel = IrcClient.Channels.FirstOrDefault(c => c.Name == Config.ChannelName);
