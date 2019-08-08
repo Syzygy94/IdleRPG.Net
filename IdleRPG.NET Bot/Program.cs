@@ -80,6 +80,7 @@ namespace IdleRPG.NET_Bot {
             e.Channel.MessageReceived -= Channel_MessageReceived;
             e.Channel.NoticeReceived -= Channel_NoticeReceived;
             e.Channel.UserKicked -= Channel_UserKicked;
+            e.Channel.UsersListReceived -= Channel_UsersListReceived;
 
             Console.WriteLine($"You left the channel {e.Channel.Name}.");
         }
@@ -92,9 +93,13 @@ namespace IdleRPG.NET_Bot {
             e.Channel.MessageReceived += Channel_MessageReceived;
             e.Channel.NoticeReceived += Channel_NoticeReceived;
             e.Channel.UserKicked += Channel_UserKicked;
+            e.Channel.UsersListReceived += Channel_UsersListReceived;
 
             Console.WriteLine($"You joined the channel {e.Channel.Name}.");
             e.Channel.Client.SendRawMessage("privmsg ChanServ op #IdleRPG IdleRPG");
+        }
+
+        private static void Channel_UsersListReceived(object sender, EventArgs e) {
             world.Start();
         }
 
@@ -116,6 +121,7 @@ namespace IdleRPG.NET_Bot {
 
         private static void Channel_UserKicked(object sender, IrcChannelUserEventArgs e) {
             var channel = (IrcChannel)sender;
+            world.Penalize(e.ChannelUser.User.NickName, "kick");
             Console.WriteLine("[{0}] User {1} was kicked from the channel.", channel.Name, e.ChannelUser.User.NickName);
         }
 
@@ -127,8 +133,7 @@ namespace IdleRPG.NET_Bot {
         private static void Channel_MessageReceived(object sender, IrcMessageEventArgs e) {
             var channel = (IrcChannel)sender;
             if (e.Source is IrcUser ircUser) {
-                if (world.Players.Exists(p => p.Nick == ircUser.NickName) && world.Players.First(p => p.Nick == ircUser.NickName).Online)
-                    world.Penalize(ircUser.NickName, "msg");
+                world.Penalize(ircUser.NickName, "msg", e.Text.Length);
                 // Read message.
                 Console.WriteLine("[{0}]({1}): {2}.", channel.Name, e.Source.Name, e.Text);
             } else {
@@ -144,7 +149,12 @@ namespace IdleRPG.NET_Bot {
 
         private static void Channel_UserJoined(object sender, IrcChannelUserEventArgs e) {
             var channel = (IrcChannel)sender;
+            e.ChannelUser.User.NickNameChanged += User_NickNameChanged;
             Console.WriteLine("[{0}] User {1} joined the channel.", channel.Name, e.ChannelUser.User.NickName);
+        }
+
+        private static void User_NickNameChanged(object sender, EventArgs e) {
+            world.Penalize("test", "nick");
         }
 
         private static void Client_Disconnected(object sender, EventArgs e) {

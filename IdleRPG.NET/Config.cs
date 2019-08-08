@@ -20,5 +20,6 @@ namespace IdleRPG.NET {
         public static int Port = 6667;
         public static bool UseSSL = false;
         public static string Owner = "Syzygy";
+        public static bool AutoLogin = true;
     }
 }
