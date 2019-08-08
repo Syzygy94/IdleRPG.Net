@@ -71,6 +71,20 @@ namespace IdleRPG.NET {
             MovePlayers(online);
             ProcessItems();
 
+            if (DateTime.Now > (DateTime)Quest["questTime"]) {
+                if (((List<Player>)Quest["players"]).Count == 0)
+                    CreateQuest(online);
+                else if ((int)Quest["type"] == 1) {
+                    List<Player> questers = (List<Player>)Quest["players"];
+                    ChanMsg($"{string.Join(", ", questers.Select(p => p.Name).ToArray(), 0, 3)}, and {questers[3].Name} have " +
+                        $"blessed the realm by completing their quest! 25% of their burden is elminated.");
+                    foreach (Player p in questers)
+                        Players[Players.IndexOf(p)].TTL = (int)(Players[Players.IndexOf(p)].TTL * .75);
+                    Quest["players"] = new List<Player>();
+                    Quest["questTime"] = DateTime.Now.AddSeconds(21600);
+                }
+            }
+
             if (LastTime.Equals(DateTime.MinValue) == false) {
                 DateTime currTime = DateTime.Now;
                 var channel = IrcClient.Channels.FirstOrDefault(c => c.Name == Config.ChannelName);
