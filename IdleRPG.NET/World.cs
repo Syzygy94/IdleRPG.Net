@@ -914,7 +914,8 @@ namespace IdleRPG.NET {
                                     Class = string.Join(" ", args, 3, args.Length - 3),
                                     Nick = ircUser.NickName,
                                     UHost = ircUser.HostName,
-                                    Password = args[2]
+                                    Password = args[2],
+                                    Admin = Config.Owner == ircUser.NickName
                                 });
                                 ChanMsg($"Welcome {ircUser.NickName}'s new player {args[1]}, the " +
                                     $"{string.Join(" ", args, 3, args.Length - 3)}! Next level in {Duration(Config.RPBase)}.");
@@ -1092,6 +1093,58 @@ namespace IdleRPG.NET {
                             Players.Remove(p);
                         } else
                             PrivMsg(ircUser, "You are not logged in.");
+                        break;
+                    case "delold":
+                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Admin) {
+                            if (args.Length < 2 || Regex.IsMatch(args[2], @"^[\d\.]+$") == false)
+                                PrivMsg(ircUser, "Try: DELOLD <# of days>");
+                            else {
+                                Players.RemoveAll(p => (DateTime.Now - p.LastLogin).Days > int.Parse(args[1]) && p.Online == false);
+                                ChanMsg($"Accounts not accessed in the last {args[1]} days removed by {ircUser.NickName}.");
+                            }
+                        } else
+                            PrivMsg(ircUser, "You don't have access to DELOLD.");
+                        break;
+                    case "del":
+                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Admin) {
+                            if (args.Length < 2)
+                                PrivMsg(ircUser, "Try: DEL <char name>");
+                            else if (Players.Exists(p => p.Name == args[1]) == false)
+                                PrivMsg(ircUser, $"No such character {args[1]}.");
+                            else {
+                                Players.Remove(Players[Players.IndexOf(Players.First(p => p.Name == args[1]))]);
+                                ChanMsg($"Character {args[1]} was removed by {ircUser.NickName}.");
+                            }
+                        } else
+                            PrivMsg(ircUser, "You don't have access to DEL.");
+                        break;
+                    case "mkadmin":
+                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Admin) {
+                            if (args.Length < 2)
+                                PrivMsg(ircUser, "Try: MKADMIN <char name>");
+                            else if (Players.Exists(p => p.Name == args[1]) == false)
+                                PrivMsg(ircUser, $"No such character {args[1]}.");
+                            else {
+                                Players[Players.IndexOf(Players.First(p => p.Name == args[1]))].Admin = true;
+                                PrivMsg(ircUser, $"Character {args[1]} is now a bot admin.");
+                            }
+                        } else
+                            PrivMsg(ircUser, "You don't have access to MKADMIN.");
+                        break;
+                    case "deladmin":
+                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Admin) {
+                            if (args.Length < 2)
+                                PrivMsg(ircUser, "Try: DELADMIN <char name>");
+                            else if (Players.Exists(p => p.Name == args[1]) == false)
+                                PrivMsg(ircUser, $"No such character {args[1]}.");
+                            else if (Players.First(p => p.Name == args[1]).Nick == Config.Owner)
+                                PrivMsg(ircUser, "Cannot DELADMIN owner account.");
+                            else {
+                                Players[Players.IndexOf(Players.First(p => p.Name == args[1]))].Admin = false;
+                                PrivMsg(ircUser, $"Character {args[1]} is no longer a bot admin.");
+                            }
+                        } else
+                            PrivMsg(ircUser, "You don't have access to DELADMIN.");
                         break;
                     default:
                         PrivMsg(ircUser, "Unknown command.");

@@ -35,7 +35,6 @@ namespace IdleRPG.NET {
             TTL = Config.RPBase;
             Pos = new Pos(Random.Next(Config.MapX), Random.Next(Config.MapY));
             Align = "n";
-            Admin = false;
             Online = true;
             CreateTime = DateTime.Now;
             LastLogin = DateTime.Now;

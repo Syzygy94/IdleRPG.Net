@@ -19,5 +19,6 @@ namespace IdleRPG.NET {
         public static string ChannelName = "#IdleRPG";
         public static int Port = 6667;
         public static bool UseSSL = false;
+        public static string Owner = "Syzygy";
     }
 }
