@@ -19,6 +19,7 @@ namespace IdleRPG.NET {
         public bool Running { get; private set; }
 
         private IrcClient IrcClient;
+        private int RPReport;
 
 
         public World(IrcClient ircClient) {
@@ -39,6 +40,7 @@ namespace IdleRPG.NET {
             Tournament = new Tournament();
             IrcClient = ircClient;
             Running = true;
+            RPReport = 0;
         }
 
         public void Start() {
@@ -71,6 +73,10 @@ namespace IdleRPG.NET {
             MovePlayers(online);
             ProcessItems();
 
+            if (RPReport % 120 == 0) {
+                // Save Quest
+            }
+
             if (DateTime.Now > (DateTime)Quest["questTime"]) {
                 if (((List<Player>)Quest["players"]).Count == 0)
                     CreateQuest(online);
@@ -92,6 +98,21 @@ namespace IdleRPG.NET {
                     TournamentBattle();
             }
 
+            if (RPReport % 14400 == 0) {
+                List<Player> players = Players.OrderByDescending(p => p.Level).ThenBy(p => p.TTL).Take(3).ToList();
+                if (players != null && players.Count > 0) {
+                    ChanMsg("Idle RPG Top 3 Players:");
+                    foreach (Player p in players)
+                        ChanMsg($"{p.Name}, the level {p.Level} {p.Class}, is #{players.IndexOf(p) + 1}! Next level in {Duration(p.TTL)}.");
+                }
+            }
+
+            if (RPReport % 18000 == 0) {
+                List<Player> players = online.Where(p => p.Level >= 45).ToList();
+                if (players != null && (players.Count / (online.Count * 1.0) > .15))
+                    ChallengeOpp(players[Random.Next(players.Count)]);
+            }
+
             if (LastTime.Equals(DateTime.MinValue) == false) {
                 DateTime currTime = DateTime.Now;
                 var channel = IrcClient.Channels.FirstOrDefault(c => c.Name == Config.ChannelName);
@@ -105,6 +126,8 @@ namespace IdleRPG.NET {
                         }
                     }
                 }
+                RPReport = RPReport + Config.Tick > int.MaxValue ? 0 : RPReport;
+                RPReport += Config.Tick;
                 LastTime = currTime;
             }
         }
@@ -1166,6 +1189,17 @@ namespace IdleRPG.NET {
                             }
                         } else
                             PrivMsg(ircUser, "You don't have access to DELADMIN.");
+                        break;
+                    case "top":
+                        if (Players.Count > 0) {
+                            List<Player> players = Players.OrderByDescending(p => p.Level).ThenBy(p => p.TTL).Take(3).ToList();
+                            if (players != null && players.Count > 0) {
+                                PrivMsg(ircUser, "Idle RPG Top 3 Players:");
+                                foreach (Player p in players)
+                                    PrivMsg(ircUser, $"{p.Name}, the level {p.Level} {p.Class}, is #{players.IndexOf(p) + 1}! Next level in {Duration(p.TTL)}.");
+                            }
+                        } else
+                            PrivMsg(ircUser, "There are no users playing yet.");
                         break;
                     default:
                         PrivMsg(ircUser, "Unknown command.");
