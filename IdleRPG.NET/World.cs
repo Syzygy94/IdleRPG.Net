@@ -1365,6 +1365,12 @@ namespace IdleRPG.NET {
                         } else
                             PrivMsg(ircUser, "You do not have access to PIT.");
                         break;
+                    case "war":
+                        if (Players.Exists(p => p.Nick == ircUser.Nick) && Players.First(p => p.Nick == ircUser.Nick).Admin)
+                            War(Players.Where(p => p.Online).ToList());
+                        else
+                            PrivMsg(ircUser, "You do not have access to WAR.");
+                        break;
                     default:
                         PrivMsg(ircUser, "Unknown command.");
                         break;
