@@ -643,7 +643,7 @@ namespace IdleRPG.NET {
                     quadrant[p] = ((2 * p.Pos.X) + 1) < Config.MapX ? 2 : quadrant[p];
                     quadrant[p] = ((2 * p.Pos.X) + 1) > Config.MapX ? 1 : quadrant[p];
                 }
-                quad_sum[quadrant[p]] = ItemSum(p);
+                quad_sum[quadrant[p]] += ItemSum(p);
             }
 
             int[] roll = { 0, 0, 0, 0 };
