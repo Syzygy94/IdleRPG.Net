@@ -12,6 +12,7 @@ namespace IdleRPG.NET_Bot {
         static void Main(string[] args) {
             ircClient.SendDelay = 200;
             ircClient.ActiveChannelSyncing = true;
+            ircClient.UseSsl = Config.UseSSL;
 
             ircClient.OnConnected += IrcClient_OnConnected;
             ircClient.OnQueryNotice += IrcClient_OnQueryNotice;
