@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdleRPG.NET", "IdleRPG.NET\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdleRPG.NET Bot", "IdleRPG.NET Bot\IdleRPG.NET Bot.csproj", "{209658DF-867A-4731-A211-71C8C9BF4031}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdleRPG.NET Tests", "IdleRPG.NET Tests\IdleRPG.NET Tests.csproj", "{169B9AA1-364D-47B5-ADC9-B67159AE95DE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{209658DF-867A-4731-A211-71C8C9BF4031}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{209658DF-867A-4731-A211-71C8C9BF4031}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{209658DF-867A-4731-A211-71C8C9BF4031}.Release|Any CPU.Build.0 = Release|Any CPU
+		{169B9AA1-364D-47B5-ADC9-B67159AE95DE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{169B9AA1-364D-47B5-ADC9-B67159AE95DE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{169B9AA1-364D-47B5-ADC9-B67159AE95DE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{169B9AA1-364D-47B5-ADC9-B67159AE95DE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

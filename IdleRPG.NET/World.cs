@@ -90,6 +90,8 @@ namespace IdleRPG.NET {
                 Evilness(onlineEvil, onlineGood);
             if (Random.Next((12 * 86400) / Config.Tick) < onlineGood.Count)
                 Goodness(onlineGood);
+            if (Random.Next((10 * 86400) / Config.Tick) < online.Count)
+                War(online);
 
             MovePlayers(online);
             ProcessItems();
@@ -622,6 +624,82 @@ namespace IdleRPG.NET {
                 Players[Players.IndexOf(players[0])].TTL += ttl;
                 Players[Players.IndexOf(players[1])].TTL += ttl;
                 Players[Players.IndexOf(players[2])].TTL += ttl;
+            }
+        }
+
+        public void War(List<Player> online) {
+            if (online == null || online.Count == 0)
+                return;
+
+            string[] quadrants = { "Northeast", "Southeast", "Southwest", "Northwest" };
+            int[] quad_sum = { 0, 0, 0, 0, 0 };
+            Dictionary<Player, int> quadrant = new Dictionary<Player, int>();
+            foreach (Player p in online) {
+                quadrant[p] = 4;
+                if (((2 * p.Pos.Y) + 1) < Config.MapY) {
+                    quadrant[p] = ((2 * p.Pos.X) + 1) < Config.MapX ? 3 : quadrant[p];
+                    quadrant[p] = ((2 * p.Pos.X) + 1) > Config.MapX ? 0 : quadrant[p];
+                } else if (((2 * p.Pos.Y) + 1) > Config.MapY) {
+                    quadrant[p] = ((2 * p.Pos.X) + 1) < Config.MapX ? 2 : quadrant[p];
+                    quadrant[p] = ((2 * p.Pos.X) + 1) > Config.MapX ? 1 : quadrant[p];
+                }
+                quad_sum[quadrant[p]] = ItemSum(p);
+            }
+
+            int[] roll = { 0, 0, 0, 0 };
+            for (int i = 0; i < 4; i++)
+                roll[i] = Random.Next(quad_sum[i]);
+
+            bool[] is_winner = { false, false, false, false };
+            for (int i = 0; i < 4; i++)
+                is_winner[i] = roll[i] >= roll[(i + 1) % 4] && roll[i] >= roll[(i + 3) % 4];
+            List<string> winners = new List<string>();
+            for (int i = 0; i < 4; i++)
+                if (is_winner[i])
+                    winners.Add($"the {quadrants[i]} [{roll[i]}/{quad_sum[i]}]");
+            string winner_text = string.Empty;
+            for (int i = 0; i < winners.Count; i++)
+                winner_text = i == 0 ? winners[i] : i == 1 ? winner_text + $" and {winners[i]}" : winner_text + $", {winners[i]}";
+            winner_text = winner_text != string.Empty ? $"has shown the power of {winner_text}" : winner_text;
+
+            bool[] is_loser = { false, false, false, false };
+            for (int i = 0; i < 4; i++)
+                is_loser[i] = roll[i] < roll[(i + 1) % 4] && roll[i] < roll[(i + 3) % 4];
+            List<string> losers = new List<string>();
+            for (int i = 0; i < 4; i++)
+                if (is_loser[i])
+                    losers.Add($"the {quadrants[i]} [{roll[i]}/{quad_sum[i]}]");
+            string loser_text = string.Empty;
+            for (int i = 0; i < losers.Count; i++)
+                loser_text = i == 0 ? losers[i] : i == 1 ? loser_text + $" and {losers[i]}" : loser_text + $", {losers[i]}";
+            loser_text = loser_text != string.Empty ? $"led {loser_text} to perdition" : loser_text;
+            List<string> neutrals = new List<string>();
+            for (int i = 0; i < 4; i++)
+                if (!is_winner[i] && !is_loser[i])
+                    neutrals.Add($"the {quadrants[i]} [{roll[i]}/{quad_sum[i]}]");
+            string neutral_text = string.Empty;
+            for (int i = 0; i < neutrals.Count; i++)
+                neutral_text = i == 0 ? neutrals[i] : i == 1 ? neutral_text + $" and {neutrals[i]}" : neutral_text + $", {neutrals[i]}";
+            neutral_text = neutral_text != string.Empty ? $" The diplomacy of {neutral_text} was admirable." : neutral_text;
+            ChanMsg("A world war has taken place in the realm!");
+            if (winner_text != string.Empty && loser_text != string.Empty)
+                ChanMsg($"The war between the four parts of the realm {winner_text}, whereas it {loser_text}.{neutral_text}");
+            else if (winner_text == string.Empty && loser_text == string.Empty)
+                ChanMsg($"The war between the four parts of the realm was well-balanced.{neutral_text}");
+            else
+                ChanMsg($"The war between the four parts of the realm {winner_text}{loser_text}.{neutral_text}");
+
+            foreach (Player p in online) {
+                if (is_winner[quadrant[p]]) {
+                    Players[Players.IndexOf(p)].TTL = Players[Players.IndexOf(p)].TTL / 2;
+                    ChanMsg($"War outcome: The {quadrants[quadrant[p]]} won, TTL of {p.Name} is halved. {p.Name} reaches " +
+                        $"next level in {Duration(Players[Players.IndexOf(p)].TTL)}.");
+                }
+                if (is_loser[quadrant[p]]) {
+                    Players[Players.IndexOf(p)].TTL = Players[Players.IndexOf(p)].TTL * 2;
+                    ChanMsg($"War outcome: The {quadrants[quadrant[p]]} lost, TTL of {p.Name} is doubled. {p.Name} reaches " +
+                        $"next level in {Duration(Players[Players.IndexOf(p)].TTL)}.");
+                }
             }
         }
 
