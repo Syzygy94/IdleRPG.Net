@@ -77,7 +77,8 @@ namespace IdleRPG.NET {
             return obj.GetType() == GetType() && Equals((Player)obj);
         }
 
-        public override int GetHashCode() =>
-            HashCode.Combine(Nick, Name, Class, Level, UHost, Pos);
+        public override int GetHashCode() {
+            return Tuple.Create(Nick, Name, Class, Level, UHost, Pos).GetHashCode();
+        }
     }
 }

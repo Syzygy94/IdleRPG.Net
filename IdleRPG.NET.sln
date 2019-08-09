@@ -1,13 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.28307.489
+VisualStudioVersion = 15.0.28307.757
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IdleRPG.NET", "IdleRPG.NET\IdleRPG.NET.csproj", "{058DA18F-557D-40FC-A540-C0AD64B86EC3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdleRPG.NET", "IdleRPG.NET\IdleRPG.NET.csproj", "{B68EC835-8AF6-4EF5-AA73-563759DA56E9}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IdleRPG.NET Tests", "IdleRPG.NET Tests\IdleRPG.NET Tests.csproj", "{F2FB0762-1D68-4426-8781-F13B2D4E02FD}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdleRPG.NET Bot", "IdleRPG.NET Bot\IdleRPG.NET Bot.csproj", "{CE1B1113-9B18-457D-BF5F-B82DBC0A0095}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdleRPG.NET Bot", "IdleRPG.NET Bot\IdleRPG.NET Bot.csproj", "{209658DF-867A-4731-A211-71C8C9BF4031}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,23 +13,19 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{058DA18F-557D-40FC-A540-C0AD64B86EC3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{058DA18F-557D-40FC-A540-C0AD64B86EC3}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{058DA18F-557D-40FC-A540-C0AD64B86EC3}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{058DA18F-557D-40FC-A540-C0AD64B86EC3}.Release|Any CPU.Build.0 = Release|Any CPU
-		{F2FB0762-1D68-4426-8781-F13B2D4E02FD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{F2FB0762-1D68-4426-8781-F13B2D4E02FD}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{F2FB0762-1D68-4426-8781-F13B2D4E02FD}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{F2FB0762-1D68-4426-8781-F13B2D4E02FD}.Release|Any CPU.Build.0 = Release|Any CPU
-		{CE1B1113-9B18-457D-BF5F-B82DBC0A0095}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{CE1B1113-9B18-457D-BF5F-B82DBC0A0095}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{CE1B1113-9B18-457D-BF5F-B82DBC0A0095}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{CE1B1113-9B18-457D-BF5F-B82DBC0A0095}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B68EC835-8AF6-4EF5-AA73-563759DA56E9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B68EC835-8AF6-4EF5-AA73-563759DA56E9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B68EC835-8AF6-4EF5-AA73-563759DA56E9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B68EC835-8AF6-4EF5-AA73-563759DA56E9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{209658DF-867A-4731-A211-71C8C9BF4031}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{209658DF-867A-4731-A211-71C8C9BF4031}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{209658DF-867A-4731-A211-71C8C9BF4031}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{209658DF-867A-4731-A211-71C8C9BF4031}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {61172B41-7804-44BF-9FD1-19BF4BFD02BC}
+		SolutionGuid = {C9DD0586-5A76-4A0D-902C-5074DFD4C31E}
 	EndGlobalSection
 EndGlobal

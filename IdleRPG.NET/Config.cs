@@ -12,6 +12,7 @@ namespace IdleRPG.NET {
         public static int MapX = 500;
         public static int MapY = 500;
         public static string PrimNick = "IdleRPG";
+        public static string Password = "";
         public static int Tick = 3;
         public static int QuestLevel = 1;
         public static int TournamentLevel = 1;

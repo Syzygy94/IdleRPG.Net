@@ -1,4 +1,4 @@
-﻿using IrcDotNet;
+﻿using Meebey.SmartIrc4net;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -42,16 +42,6 @@ namespace IdleRPG.NET {
             Running = true;
             RPReport = 0;
             OldRPReport = 0;
-            Players.Add(new Player()
-            {
-                Name = "Syzygy",
-                Admin = false,
-                Class = "Zombie",
-                Nick = "Syzygy",
-                Level = 1,
-                Align = "g",
-                UHost = "!Syzygy@192.168.1.101"
-            });
         }
 
         public void Start() {
@@ -60,21 +50,19 @@ namespace IdleRPG.NET {
 
         public void AutoLogin() {
             if (Config.AutoLogin) {
-                var channel = IrcClient.Channels.FirstOrDefault(c => c.Name == Config.ChannelName);
+                var channel = IrcClient.GetChannel(Config.ChannelName);
                 if (channel != null) {
                     if (channel.Users.Count > 0) {
-                        foreach (IrcChannelUser user in channel.Users)
-                            user.DeVoice();
-                        foreach (Player p in Players) {
-                            var user = channel.Users.FirstOrDefault(u => u.User.HostName == p.UHost);
-                            if (user != null) {
-                                user.Voice();
-                                p.Online = true;
-                                p.Nick = user.User.NickName;
-                                p.LastLogin = DateTime.Now;
-                                ChanMsg($"{p.Name}, the level {p.Level} {p.Class}, is now online from nickname {user.User.NickName}. " +
-                                    $"Next level in {Duration(p.TTL)}.");
-                                Notice(p.Nick, $"Logon successful. Next level in {Duration(p.TTL)}.");
+                        foreach (ChannelUser user in channel.Users.Values) {
+                            Player p = user.Nick == Config.PrimNick ? null : Players.FirstOrDefault(player => player.UHost == user.Host);
+                            if (p != null) {
+                                IrcClient.Voice(Config.ChannelName, user.Nick);
+                                Players[Players.IndexOf(p)].Online = true;
+                                Players[Players.IndexOf(p)].Nick = user.Nick;
+                                Players[Players.IndexOf(p)].LastLogin = DateTime.Now;
+                                ChanMsg($"{p.Name}, the level {p.Level} {p.Class}, is now online from nickname {user.Nick}. " +
+                                        $"Next level in {Duration(p.TTL)}.");
+                                Notice(user.Nick, $"Logon successful. Next level in {Duration(p.TTL)}.");
                             }
                         }
                     }
@@ -84,10 +72,8 @@ namespace IdleRPG.NET {
 
         public void RPCheck() {
             List<Player> online = Players.Where(p => p.Online).ToList();
-            if (online is null || online.Count == 0) {
-                LastTime = DateTime.Now;
+            if (online is null || online.Count == 0)
                 return;
-            }
 
             List<Player> onlineEvil = online.Where(p => p.Align == "e").ToList();
             List<Player> onlineGood = online.Where(p => p.Align == "g").ToList();
@@ -150,10 +136,10 @@ namespace IdleRPG.NET {
 
             if (LastTime.Equals(DateTime.MinValue) == false) {
                 DateTime currTime = DateTime.Now;
-                var channel = IrcClient.Channels.FirstOrDefault(c => c.Name == Config.ChannelName);
+                var channel = IrcClient.GetChannel(Config.ChannelName);
                 if (channel != null) {
                     foreach (Player p in Players) {
-                        if (p.Online && channel.Users.Count > 0 && channel.Users.FirstOrDefault(u => u.User.NickName == p.Nick) != null) {
+                        if (p.Online && channel.Users.ContainsKey(p.Nick)) {
                             Players[Players.IndexOf(p)].TTL -= (int)(currTime - LastTime).TotalSeconds;
                             Players[Players.IndexOf(p)].IdleTime += (int)(currTime - LastTime).TotalSeconds;
                             if (Players[Players.IndexOf(p)].TTL <= 0)
@@ -969,37 +955,36 @@ namespace IdleRPG.NET {
             }
         }
 
-        public void ParseMessage(IrcUser ircUser, string message) {
-            string[] args = message.Split(" ", StringSplitOptions.RemoveEmptyEntries);
-            if (args.Length > 0) {
-                switch (args[0].ToLower()) {
+        public void ParseMessage(IrcUser ircUser, string[] msg) {
+            if (msg.Length > 0) {
+                switch (msg[0].ToLower()) {
                     case "register":
-                        if (Players.Exists(p => p.Nick == ircUser.NickName)) {
-                            PrivMsg(ircUser, $"Sorry, you are already online as {Players.First(p => p.Nick == ircUser.NickName).Name}.");
+                        if (Players.Exists(p => p.Nick == ircUser.Nick)) {
+                            PrivMsg(ircUser, $"Sorry, you are already online as {Players.First(p => p.Nick == ircUser.Nick).Name}.");
                         } else {
-                            if (args.Length < 4 || args[3].Equals(string.Empty)) {
+                            if (msg.Length < 4 || msg[3].Equals(string.Empty)) {
                                 PrivMsg(ircUser, "Try: REGISTER <char name> <password> <class>");
                                 PrivMsg(ircUser, "IE : REGISTER Poseidon MyPassword God Of the Sea");
-                            } else if (args[1] != string.Empty && Players.Exists(p => p.Name.ToLower() == args[1].ToLower()))
+                            } else if (msg[1] != string.Empty && Players.Exists(p => p.Name.ToLower() == msg[1].ToLower()))
                                 PrivMsg(ircUser, "Sorry, that character name is already in use.");
-                            else if (args[1].ToLower() == Config.PrimNick.ToLower())
+                            else if (msg[1].ToLower() == Config.PrimNick.ToLower())
                                 PrivMsg(ircUser, "Sorry, that character name cannot be registered.");
-                            else if (IrcClient.Channels.FirstOrDefault(c => c.Name == Config.ChannelName) != null && IrcClient.Channels.First(c => c.Name == Config.ChannelName).Users.FirstOrDefault(u => u.User.NickName == ircUser.NickName) == null)
+                            else if (ircUser.JoinedChannels.Contains(Config.ChannelName) == false)
                                 PrivMsg(ircUser, $"Sorry, you're not in {Config.ChannelName}.");
                             else {
-                                IrcClient.Channels.First(c => c.Name == Config.ChannelName).Users.First(u => u.User.NickName == ircUser.NickName).Voice();
+                                IrcClient.Voice(Config.ChannelName, ircUser.Nick);
                                 Players.Add(new Player()
                                 {
-                                    Name = args[1],
-                                    Class = string.Join(" ", args, 3, args.Length - 3),
-                                    Nick = ircUser.NickName,
-                                    UHost = ircUser.HostName,
-                                    Password = args[2],
-                                    Admin = Config.Owner == ircUser.NickName
+                                    Name = msg[1],
+                                    Class = string.Join(" ", msg, 3, msg.Length - 3),
+                                    Nick = ircUser.Nick,
+                                    UHost = ircUser.Host,
+                                    Password = msg[2],
+                                    Admin = Config.Owner == ircUser.Nick
                                 });
-                                ChanMsg($"Welcome {ircUser.NickName}'s new player {args[1]}, the " +
-                                    $"{string.Join(" ", args, 3, args.Length - 3)}! Next level in {Duration(Config.RPBase)}.");
-                                PrivMsg(ircUser, $"Success! Account {args[1]} created. You have {Config.RPBase} " +
+                                ChanMsg($"Welcome {ircUser.Nick}'s new player {msg[1]}, the " +
+                                    $"{string.Join(" ", msg, 3, msg.Length - 3)}! Next level in {Duration(Config.RPBase)}.");
+                                PrivMsg(ircUser, $"Success! Account {msg[1]} created. You have {Config.RPBase} " +
                                     $"seconds idleness until you reach level 1.");
                                 PrivMsg(ircUser, "NOTE: The point of the game is to see who can idle the longest. " +
                                     "As such, talking in the channel, parting, quitting, and changing nicks all penalize you.");
@@ -1007,77 +992,77 @@ namespace IdleRPG.NET {
                         }
                         break;
                     case "hog":
-                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Admin) {
-                            ChanMsg($"{ircUser.NickName} has summoned the Hand of God.");
+                        if (Players.Exists(p => p.Nick == ircUser.Nick) && Players.First(p => p.Nick == ircUser.Nick).Admin) {
+                            ChanMsg($"{ircUser.Nick} has summoned the Hand of God.");
                             Hog(Players.Where(p => p.Online).ToList());
                         } else
                             PrivMsg(ircUser, "You don't have access to HOG.");
                         break;
                     case "chpass":
-                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Admin) {
-                            if (args.Length < 3)
+                        if (Players.Exists(p => p.Nick == ircUser.Nick) && Players.First(p => p.Nick == ircUser.Nick).Admin) {
+                            if (msg.Length < 3)
                                 PrivMsg(ircUser, "Try: CHPASS <char name> <new password>");
-                            else if (Players.Exists(p => p.Name == args[1]) == false)
-                                PrivMsg(ircUser, $"No such character {args[1]}.");
+                            else if (Players.Exists(p => p.Name == msg[1]) == false)
+                                PrivMsg(ircUser, $"No such character {msg[1]}.");
                             else {
-                                Players.First(p => p.Name == args[1]).Password = args[2];
-                                PrivMsg(ircUser, $"Password for {args[1]} changed.");
+                                Players.First(p => p.Name == msg[1]).Password = msg[2];
+                                PrivMsg(ircUser, $"Password for {msg[1]} changed.");
                             }
                         } else
                             PrivMsg(ircUser, "You don't have access to CHPASS.");
                         break;
                     case "chuser":
-                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Admin) {
-                            if (args.Length < 3)
+                        if (Players.Exists(p => p.Nick == ircUser.Nick) && Players.First(p => p.Nick == ircUser.Nick).Admin) {
+                            if (msg.Length < 3)
                                 PrivMsg(ircUser, "Try: CHUSER <char name> <new char name>");
-                            else if (Players.Exists(p => p.Name == args[1]) == false)
-                                PrivMsg(ircUser, $"No such character {args[1]}.");
-                            else if (Players.Exists(p => p.Name == args[1]))
-                                PrivMsg(ircUser, $"Character name {args[1]} is already taken.");
+                            else if (Players.Exists(p => p.Name == msg[1]) == false)
+                                PrivMsg(ircUser, $"No such character {msg[1]}.");
+                            else if (Players.Exists(p => p.Name == msg[1]))
+                                PrivMsg(ircUser, $"Character name {msg[1]} is already taken.");
                             else {
-                                Players.First(p => p.Name == args[1]).Name = args[2];
-                                PrivMsg(ircUser, $"Character name for {args[1]} changed to {args[2]}.");
+                                Players.First(p => p.Name == msg[1]).Name = msg[2];
+                                PrivMsg(ircUser, $"Character name for {msg[1]} changed to {msg[2]}.");
                             }
                         } else
                             PrivMsg(ircUser, "You don't have access to CHUSER.");
                         break;
                     case "chclass":
-                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Admin) {
-                            if (args.Length < 3)
+                        if (Players.Exists(p => p.Nick == ircUser.Nick) && Players.First(p => p.Nick == ircUser.Nick).Admin) {
+                            if (msg.Length < 3)
                                 PrivMsg(ircUser, "Try: CHCLASS <char name> <new char class>");
-                            else if (Players.Exists(p => p.Name == args[1]) == false)
-                                PrivMsg(ircUser, $"No such character {args[1]}.");
+                            else if (Players.Exists(p => p.Name == msg[1]) == false)
+                                PrivMsg(ircUser, $"No such character {msg[1]}.");
                             else {
-                                Players.First(p => p.Name == args[1]).Class = string.Join(" ", args, 2, args.Length - 2);
-                                PrivMsg(ircUser, $"Class for {args[1]} changed to {string.Join(" ", args, 2, args.Length - 2)}.");
+                                Players.First(p => p.Name == msg[1]).Class = string.Join(" ", msg, 2, msg.Length - 2);
+                                PrivMsg(ircUser, $"Class for {msg[1]} changed to {string.Join(" ", msg, 2, msg.Length - 2)}.");
                             }
                         } else
                             PrivMsg(ircUser, "You don't have access to CHCLASS.");
                         break;
                     case "push":
-                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Admin) {
-                            if (args.Length < 3 || Regex.IsMatch(args[2], @"^\-?\d+$") == false)
+                        if (Players.Exists(p => p.Nick == ircUser.Nick) && Players.First(p => p.Nick == ircUser.Nick).Admin) {
+                            if (msg.Length < 3 || Regex.IsMatch(msg[2], @"^\-?\d+$") == false)
                                 PrivMsg(ircUser, "Try: PUSH <char name> <seconds>");
-                            else if (Players.Exists(p => p.Name == args[1]) == false)
-                                PrivMsg(ircUser, $"No such character {args[1]}.");
-                            else if (int.Parse(args[2]) > Players.First(p => p.Name == args[1]).TTL) {
-                                PrivMsg(ircUser, $"Time to level for {args[1]} ({Players.First(p => p.Name == args[1]).TTL}s) is " +
-                                    $"lower than {args[2]}; setting TTL to 0.");
-                                ChanMsg($"{ircUser.NickName} has pushed {args[1]} {Players.First(p => p.Name == args[1]).TTL} seconds " +
-                                    $"towards level {Players.First(p => p.Name == args[1]).Level + 1}.");
-                                Players.First(p => p.Name == args[1]).TTL = 0;
+                            else if (Players.Exists(p => p.Name == msg[1]) == false)
+                                PrivMsg(ircUser, $"No such character {msg[1]}.");
+                            else if (int.Parse(msg[2]) > Players.First(p => p.Name == msg[1]).TTL) {
+                                PrivMsg(ircUser, $"Time to level for {msg[1]} ({Players.First(p => p.Name == msg[1]).TTL}s) is " +
+                                    $"lower than {msg[2]}; setting TTL to 0.");
+                                ChanMsg($"{ircUser.Nick} has pushed {msg[1]} {Players.First(p => p.Name == msg[1]).TTL} seconds " +
+                                    $"towards level {Players.First(p => p.Name == msg[1]).Level + 1}.");
+                                Players.First(p => p.Name == msg[1]).TTL = 0;
                             } else {
-                                Players.First(p => p.Name == args[1]).TTL -= int.Parse(args[2]);
-                                ChanMsg($"{ircUser.NickName} has pushed {args[1]} {args[2]} seconds toward level " +
-                                    $"{Players.First(p => p.Name == args[1]).Level + 1}. {args[1]} reaches next level in " +
-                                    $"{Duration(Players.First(p => p.Name == args[1]).TTL)}.");
+                                Players.First(p => p.Name == msg[1]).TTL -= int.Parse(msg[2]);
+                                ChanMsg($"{ircUser.Nick} has pushed {msg[1]} {msg[2]} seconds toward level " +
+                                    $"{Players.First(p => p.Name == msg[1]).Level + 1}. {msg[1]} reaches next level in " +
+                                    $"{Duration(Players.First(p => p.Name == msg[1]).TTL)}.");
                             }
                         } else
                             PrivMsg(ircUser, "You don't have access to PUSH.");
                         break;
                     case "logout":
-                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Online)
-                            Penalize(ircUser.NickName, "logout");
+                        if (Players.Exists(p => p.Nick == ircUser.Nick) && Players.First(p => p.Nick == ircUser.Nick).Online)
+                            Penalize(new Hashtable() { { "type", "logout" }, { "nick", ircUser.Nick } });
                         else
                             PrivMsg(ircUser, "You are not logged in.");
                         break;
@@ -1094,16 +1079,16 @@ namespace IdleRPG.NET {
                             PrivMsg(ircUser, "There is no active quest.");
                         break;
                     case "status":
-                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Online) {
-                            if (args.Length > 1) {
-                                if (Players.Exists(p => p.Name == args[1])) {
-                                    Player p = Players.First(player => player.Name == args[1]);
+                        if (Players.Exists(p => p.Nick == ircUser.Nick) && Players.First(p => p.Nick == ircUser.Nick).Online) {
+                            if (msg.Length > 1) {
+                                if (Players.Exists(p => p.Name == msg[1])) {
+                                    Player p = Players.First(player => player.Name == msg[1]);
                                     PrivMsg(ircUser, $"{p.Name}: Level {p.Level} {p.Class}; O{(p.Online ? "n" : "ff")}line; " +
                                         $"TTL: {Duration(p.TTL)}; Idled: {Duration(p.IdleTime)}; Item Sum: {ItemSum(p)}");
                                 } else
                                     PrivMsg(ircUser, "No such user.");
                             } else {
-                                Player p = Players.First(player => player.Nick == ircUser.NickName);
+                                Player p = Players.First(player => player.Nick == ircUser.Nick);
                                 PrivMsg(ircUser, $"{p.Name}: Level {p.Level} {p.Class}; O{(p.Online ? "n" : "ff")}line; " +
                                     $"TTL: {Duration(p.TTL)}; Idled: {Duration(p.IdleTime)}; Item Sum: {ItemSum(p)}");
                             }
@@ -1111,117 +1096,117 @@ namespace IdleRPG.NET {
                             PrivMsg(ircUser, "You are not logged in.");
                         break;
                     case "whoami":
-                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Online) {
-                            Player p = Players.First(player => player.Nick == ircUser.NickName);
+                        if (Players.Exists(p => p.Nick == ircUser.Nick) && Players.First(p => p.Nick == ircUser.Nick).Online) {
+                            Player p = Players.First(player => player.Nick == ircUser.Nick);
                             PrivMsg(ircUser, $"You are {p.Name}, the level {p.Level} {p.Class}. Next level in {Duration(p.TTL)}.");
                         } else
                             PrivMsg(ircUser, "You are not logged in.");
                         break;
                     case "newpass":
-                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Online) {
-                            if (args.Length < 2)
+                        if (Players.Exists(p => p.Nick == ircUser.Nick) && Players.First(p => p.Nick == ircUser.Nick).Online) {
+                            if (msg.Length < 2)
                                 PrivMsg(ircUser, "Try: NEWPASS <new password>");
                             else {
-                                Players.First(p => p.Nick == ircUser.NickName).Password = args[1];
+                                Players.First(p => p.Nick == ircUser.Nick).Password = msg[1];
                                 PrivMsg(ircUser, "Your password was changed.");
                             }
                         } else
                             PrivMsg(ircUser, "You are not logged in.");
                         break;
                     case "align":
-                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Online) {
-                            if (args.Length < 2 || (args[1].ToLower() != "good" && args[1].ToLower() != "neutral" && args[1].ToLower() != "evil"))
+                        if (Players.Exists(p => p.Nick == ircUser.Nick) && Players.First(p => p.Nick == ircUser.Nick).Online) {
+                            if (msg.Length < 2 || (msg[1].ToLower() != "good" && msg[1].ToLower() != "neutral" && msg[1].ToLower() != "evil"))
                                 PrivMsg(ircUser, "Try: ALIGN <good|neutral|evil>");
                             else {
-                                Players.First(player => player.Nick == ircUser.NickName).Align = args[1].Substring(0, 1);
-                                ChanMsg($"{Players.First(player => player.Nick == ircUser.NickName).Name} has changed alignment to: {args[1].ToLower()}.");
-                                PrivMsg(ircUser, $"You alignment was changed to: {args[1].ToLower()}.");
+                                Players.First(player => player.Nick == ircUser.Nick).Align = msg[1].Substring(0, 1);
+                                ChanMsg($"{Players.First(player => player.Nick == ircUser.Nick).Name} has changed alignment to: {msg[1].ToLower()}.");
+                                PrivMsg(ircUser, $"You alignment was changed to: {msg[1].ToLower()}.");
                             }
                         } else
                             PrivMsg(ircUser, "You are not logged in.");
                         break;
                     case "login":
-                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Online)
-                            Notice(ircUser.NickName, $"Sorry, you are already online as {Players.First(p => p.Nick == ircUser.NickName).Name}.");
+                        if (Players.Exists(p => p.Nick == ircUser.Nick) && Players.First(p => p.Nick == ircUser.Nick).Online)
+                            Notice(ircUser.Nick, $"Sorry, you are already online as {Players.First(p => p.Nick == ircUser.Nick).Name}.");
                         else {
-                            if (args.Length < 3 || args[2].Equals(string.Empty))
-                                Notice(ircUser.NickName, "Try: LOGIN <username> <password>");
-                            else if (Players.Exists(p => p.Name == args[1]) == false)
-                                Notice(ircUser.NickName, "Sorry, no such account name. Note that account names are case sensitive.");
-                            else if (IrcClient.Channels.FirstOrDefault(c => c.Name == Config.ChannelName) != null && IrcClient.Channels.First(c => c.Name == Config.ChannelName).Users.FirstOrDefault(u => u.User.NickName == ircUser.NickName) == null)
-                                Notice(ircUser.NickName, $"Sorry, you're not in {Config.ChannelName}.");
-                            else if (Players.First(p => p.Name == args[1]).Password != args[2])
-                                Notice(ircUser.NickName, "Wrong password.");
+                            if (msg.Length < 3 || msg[2].Equals(string.Empty))
+                                Notice(ircUser.Nick, "Try: LOGIN <username> <password>");
+                            else if (Players.Exists(p => p.Name == msg[1]) == false)
+                                Notice(ircUser.Nick, "Sorry, no such account name. Note that account names are case sensitive.");
+                            else if (ircUser.JoinedChannels.Contains(Config.ChannelName) == false)
+                                Notice(ircUser.Nick, $"Sorry, you're not in {Config.ChannelName}.");
+                            else if (Players.First(p => p.Name == msg[1]).Password != msg[2])
+                                Notice(ircUser.Nick, "Wrong password.");
                             else {
-                                IrcClient.Channels.First(c => c.Name == Config.ChannelName).Users.First(u => u.User.NickName == ircUser.NickName).Voice();
-                                Player p = Players.First(player => player.Name == args[1]);
+                                IrcClient.Voice(Config.ChannelName, ircUser.Nick);
+                                Player p = Players.First(player => player.Name == msg[1]);
                                 p.Online = true;
-                                p.Nick = ircUser.NickName;
-                                p.UHost = ircUser.HostName;
+                                p.Nick = ircUser.Nick;
+                                p.UHost = ircUser.Host;
                                 p.LastLogin = DateTime.Now;
-                                ChanMsg($"{args[1]}, the level {p.Level} {p.Class}, is now online from {ircUser.NickName}. " +
+                                ChanMsg($"{msg[1]}, the level {p.Level} {p.Class}, is now online from {ircUser.Nick}. " +
                                     $"Next level in {Duration(p.TTL)}.");
-                                Notice(ircUser.NickName, $"Logon successful. Next level in {Duration(p.TTL)}.");
+                                Notice(ircUser.Nick, $"Logon successful. Next level in {Duration(p.TTL)}.");
                             }
                         }
                         break;
                     case "removeme":
-                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Online) {
-                            Player p = Players.First(player => player.Nick == ircUser.NickName);
+                        if (Players.Exists(p => p.Nick == ircUser.Nick) && Players.First(p => p.Nick == ircUser.Nick).Online) {
+                            Player p = Players.First(player => player.Nick == ircUser.Nick);
                             PrivMsg(ircUser, $"Account {p.Name} removed.");
-                            ChanMsg($"{ircUser.NickName} removed their account, {p.Name}, the {p.Class}.");
+                            ChanMsg($"{ircUser.Nick} removed their account, {p.Name}, the {p.Class}.");
                             Players.Remove(p);
                         } else
                             PrivMsg(ircUser, "You are not logged in.");
                         break;
                     case "delold":
-                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Admin) {
-                            if (args.Length < 2 || Regex.IsMatch(args[2], @"^[\d\.]+$") == false)
+                        if (Players.Exists(p => p.Nick == ircUser.Nick) && Players.First(p => p.Nick == ircUser.Nick).Admin) {
+                            if (msg.Length < 2 || Regex.IsMatch(msg[2], @"^[\d\.]+$") == false)
                                 PrivMsg(ircUser, "Try: DELOLD <# of days>");
                             else {
-                                Players.RemoveAll(p => (DateTime.Now - p.LastLogin).Days > int.Parse(args[1]) && p.Online == false);
-                                ChanMsg($"Accounts not accessed in the last {args[1]} days removed by {ircUser.NickName}.");
+                                Players.RemoveAll(p => (DateTime.Now - p.LastLogin).Days > int.Parse(msg[1]) && p.Online == false);
+                                ChanMsg($"Accounts not accessed in the last {msg[1]} days removed by {ircUser.Nick}.");
                             }
                         } else
                             PrivMsg(ircUser, "You don't have access to DELOLD.");
                         break;
                     case "del":
-                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Admin) {
-                            if (args.Length < 2)
+                        if (Players.Exists(p => p.Nick == ircUser.Nick) && Players.First(p => p.Nick == ircUser.Nick).Admin) {
+                            if (msg.Length < 2)
                                 PrivMsg(ircUser, "Try: DEL <char name>");
-                            else if (Players.Exists(p => p.Name == args[1]) == false)
-                                PrivMsg(ircUser, $"No such character {args[1]}.");
+                            else if (Players.Exists(p => p.Name == msg[1]) == false)
+                                PrivMsg(ircUser, $"No such character {msg[1]}.");
                             else {
-                                Players.Remove(Players[Players.IndexOf(Players.First(p => p.Name == args[1]))]);
-                                ChanMsg($"Character {args[1]} was removed by {ircUser.NickName}.");
+                                Players.Remove(Players[Players.IndexOf(Players.First(p => p.Name == msg[1]))]);
+                                ChanMsg($"Character {msg[1]} was removed by {ircUser.Nick}.");
                             }
                         } else
                             PrivMsg(ircUser, "You don't have access to DEL.");
                         break;
                     case "mkadmin":
-                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Admin) {
-                            if (args.Length < 2)
+                        if (Players.Exists(p => p.Nick == ircUser.Nick) && Players.First(p => p.Nick == ircUser.Nick).Admin) {
+                            if (msg.Length < 2)
                                 PrivMsg(ircUser, "Try: MKADMIN <char name>");
-                            else if (Players.Exists(p => p.Name == args[1]) == false)
-                                PrivMsg(ircUser, $"No such character {args[1]}.");
+                            else if (Players.Exists(p => p.Name == msg[1]) == false)
+                                PrivMsg(ircUser, $"No such character {msg[1]}.");
                             else {
-                                Players[Players.IndexOf(Players.First(p => p.Name == args[1]))].Admin = true;
-                                PrivMsg(ircUser, $"Character {args[1]} is now a bot admin.");
+                                Players[Players.IndexOf(Players.First(p => p.Name == msg[1]))].Admin = true;
+                                PrivMsg(ircUser, $"Character {msg[1]} is now a bot admin.");
                             }
                         } else
                             PrivMsg(ircUser, "You don't have access to MKADMIN.");
                         break;
                     case "deladmin":
-                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Admin) {
-                            if (args.Length < 2)
+                        if (Players.Exists(p => p.Nick == ircUser.Nick) && Players.First(p => p.Nick == ircUser.Nick).Admin) {
+                            if (msg.Length < 2)
                                 PrivMsg(ircUser, "Try: DELADMIN <char name>");
-                            else if (Players.Exists(p => p.Name == args[1]) == false)
-                                PrivMsg(ircUser, $"No such character {args[1]}.");
-                            else if (Players.First(p => p.Name == args[1]).Nick == Config.Owner)
+                            else if (Players.Exists(p => p.Name == msg[1]) == false)
+                                PrivMsg(ircUser, $"No such character {msg[1]}.");
+                            else if (Players.First(p => p.Name == msg[1]).Nick == Config.Owner)
                                 PrivMsg(ircUser, "Cannot DELADMIN owner account.");
                             else {
-                                Players[Players.IndexOf(Players.First(p => p.Name == args[1]))].Admin = false;
-                                PrivMsg(ircUser, $"Character {args[1]} is no longer a bot admin.");
+                                Players[Players.IndexOf(Players.First(p => p.Name == msg[1]))].Admin = false;
+                                PrivMsg(ircUser, $"Character {msg[1]} is no longer a bot admin.");
                             }
                         } else
                             PrivMsg(ircUser, "You don't have access to DELADMIN.");
@@ -1238,65 +1223,65 @@ namespace IdleRPG.NET {
                             PrivMsg(ircUser, "There are no users playing yet.");
                         break;
                     case "irc":
-                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Admin) {
+                        if (Players.Exists(p => p.Nick == ircUser.Nick) && Players.First(p => p.Nick == ircUser.Nick).Admin) {
                             PrivMsg(ircUser, "Sending IRC command...");
-                            IrcClient.SendRawMessage(string.Join(" ", args, 1, args.Length - 1));
+                            IrcClient.WriteLine(string.Join(" ", msg, 1, msg.Length - 1));
                         } else
                             PrivMsg(ircUser, "You do not have access to IRC.");
                         break;
                     case "topic":
-                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Admin) {
+                        if (Players.Exists(p => p.Nick == ircUser.Nick) && Players.First(p => p.Nick == ircUser.Nick).Admin) {
                             PrivMsg(ircUser, "Setting channel topic...");
-                            IrcClient.SendRawMessage($"TOPIC {Config.ChannelName} :{string.Join(" ", args, 1, args.Length - 1)}");
+                            IrcClient.RfcTopic(Config.ChannelName, string.Join(" ", msg, 1, msg.Length - 1));
                         } else
                             PrivMsg(ircUser, "You do not have access to TOPIC.");
                         break;
                     case "fight":
-                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Online) {
-                            if (args.Length < 2)
+                        if (Players.Exists(p => p.Nick == ircUser.Nick) && Players.First(p => p.Nick == ircUser.Nick).Online) {
+                            if (msg.Length < 2)
                                 PrivMsg(ircUser, "Try: FIGHT <char name>");
-                            else if (Players.Exists(p => p.Name == args[1]) == false)
-                                PrivMsg(ircUser, $"No such character {args[1]}.");
-                            else if (Players.First(p => p.Nick == ircUser.NickName).Level < 25)
+                            else if (Players.Exists(p => p.Name == msg[1]) == false)
+                                PrivMsg(ircUser, $"No such character {msg[1]}.");
+                            else if (Players.First(p => p.Nick == ircUser.Nick).Level < 25)
                                 PrivMsg(ircUser, "You're too weak to use this command! Try when you're stronger.");
                             else {
                                 if (Random.Next(4) < 1) {
-                                    PrivMsg(ircUser, $"You started a fight with {args[1]}. Good luck!");
-                                    Player p = Players.First(player => player.Nick == ircUser.NickName);
-                                    Player opp = Players.First(player => player.Name == args[1]);
+                                    PrivMsg(ircUser, $"You started a fight with {msg[1]}. Good luck!");
+                                    Player p = Players.First(player => player.Nick == ircUser.Nick);
+                                    Player opp = Players.First(player => player.Name == msg[1]);
                                     CollisionFight(p, opp);
                                 } else
-                                    PrivMsg(ircUser, $"You were unable to find {args[1]}. It seems that they slipped away to live another day.");
+                                    PrivMsg(ircUser, $"You were unable to find {msg[1]}. It seems that they slipped away to live another day.");
                             }
                         } else
                             PrivMsg(ircUser, "You are not logged in.");
                         break;
                     case "move":
-                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Admin) {
-                            if (args.Length < 4 || Regex.IsMatch(args[2], @"^\d+$") == false || Regex.IsMatch(args[3], @"^\d+$") == false)
+                        if (Players.Exists(p => p.Nick == ircUser.Nick) && Players.First(p => p.Nick == ircUser.Nick).Admin) {
+                            if (msg.Length < 4 || Regex.IsMatch(msg[2], @"^\d+$") == false || Regex.IsMatch(msg[3], @"^\d+$") == false)
                                 PrivMsg(ircUser, "Try: MOVE <char name> <x> <y>");
-                            else if (Players.Exists(p => p.Name == args[1]) == false)
-                                PrivMsg(ircUser, $"No such character {args[1]}.");
+                            else if (Players.Exists(p => p.Name == msg[1]) == false)
+                                PrivMsg(ircUser, $"No such character {msg[1]}.");
                             else {
-                                Player p = Players.First(player => player.Name == args[1]);
+                                Player p = Players.First(player => player.Name == msg[1]);
                                 Pos oldPos = p.Pos;
-                                Players[Players.IndexOf(p)].Pos = new Pos(int.Parse(args[2]), int.Parse(args[3]));
-                                PrivMsg(ircUser, $"Moved {args[1]} from {oldPos.ToString()} to {Players[Players.IndexOf(p)].Pos.ToString()}.");
+                                Players[Players.IndexOf(p)].Pos = new Pos(int.Parse(msg[2]), int.Parse(msg[3]));
+                                PrivMsg(ircUser, $"Moved {msg[1]} from {oldPos.ToString()} to {Players[Players.IndexOf(p)].Pos.ToString()}.");
                             }
                         } else
                             PrivMsg(ircUser, "You do not have access to MOVE.");
                         break;
                     case "pit":
-                        if (Players.Exists(p => p.Nick == ircUser.NickName) && Players.First(p => p.Nick == ircUser.NickName).Admin) {
-                            if (args.Length < 3)
+                        if (Players.Exists(p => p.Nick == ircUser.Nick) && Players.First(p => p.Nick == ircUser.Nick).Admin) {
+                            if (msg.Length < 3)
                                 PrivMsg(ircUser, "Try: PIT <player 1> <player 2>");
-                            else if (Players.Exists(p => p.Name == args[1]) == false)
-                                PrivMsg(ircUser, $"No such character {args[1]}.");
-                            else if (Players.Exists(p => p.Name == args[2]) == false)
-                                PrivMsg(ircUser, $"No such character {args[2]}.");
+                            else if (Players.Exists(p => p.Name == msg[1]) == false)
+                                PrivMsg(ircUser, $"No such character {msg[1]}.");
+                            else if (Players.Exists(p => p.Name == msg[2]) == false)
+                                PrivMsg(ircUser, $"No such character {msg[2]}.");
                             else {
-                                Player p1 = Players.First(player => player.Name == args[1]);
-                                Player p2 = Players.First(player => player.Name == args[2]);
+                                Player p1 = Players.First(player => player.Name == msg[1]);
+                                Player p2 = Players.First(player => player.Name == msg[2]);
                                 CollisionFight(p1, p2);
                             }
                         } else
@@ -1309,41 +1294,55 @@ namespace IdleRPG.NET {
             }
         }
 
-        public void Penalize(string nick, string type, int textLength = 0) {
-            Player p = Players.FirstOrDefault(player => player.Nick == nick);
+        public void Penalize(Hashtable penalty) {
+            Player p = Players.FirstOrDefault(player => player.Nick == (string)penalty["nick"] && player.Online);
 
             if (p != null) {
                 QuestPenaltyCheck(p);
-                int penalty = 0;
-                switch (type) {
+                int pen = 0;
+                switch ((string)penalty["type"]) {
+                    case "quit":
+                        pen = 20 * PenTTL(p.Level) / Config.RPBase;
+                        pen = pen > Config.LimitPen ? Config.LimitPen : pen;
+                        Players[Players.IndexOf(p)].Penalties["quit"] += pen;
+                        Players[Players.IndexOf(p)].Online = false;
+                        break;
+                    case "nick":
+                        pen = 30 * PenTTL(p.Level) / Config.RPBase;
+                        pen = pen > Config.LimitPen ? Config.LimitPen : pen;
+                        Players[Players.IndexOf(p)].Penalties["nick"] += pen;
+                        Players[Players.IndexOf(p)].Nick = (string)penalty["newNick"];
+                        Players[Players.IndexOf(p)].UHost = (string)penalty["host"];
+                        Notice((string)penalty["newNick"], $"Penalty of {Duration(pen)} added to your timer for nick change.");
+                        break;
                     case "logout":
-                        penalty = 20 * PenTTL(p.Level) / Config.RPBase;
-                        penalty = penalty > Config.LimitPen ? Config.LimitPen : penalty;
-                        Players[Players.IndexOf(p)].Penalties["logout"] += penalty;
-                        Notice(nick, $"Penalty of {Duration(penalty)} added to your timer for LOGOUT command.");
+                        pen = 20 * PenTTL(p.Level) / Config.RPBase;
+                        pen = pen > Config.LimitPen ? Config.LimitPen : pen;
+                        Players[Players.IndexOf(p)].Penalties["logout"] += pen;
+                        Notice((string)penalty["nick"], $"Penalty of {Duration(pen)} added to your timer for LOGOUT command.");
                         Players[Players.IndexOf(p)].Online = false;
                         break;
                     case "msg":
-                        penalty = textLength * PenTTL(p.Level) / Config.RPBase;
-                        penalty = penalty > Config.LimitPen ? Config.LimitPen : penalty;
-                        Players[Players.IndexOf(p)].Penalties["msg"] += penalty;
-                        Notice(nick, $"Penalty of {Duration(penalty)} added to your timer for chatting in the channel.");
+                        pen = (int)penalty["textLength"] * PenTTL(p.Level) / Config.RPBase;
+                        pen = pen > Config.LimitPen ? Config.LimitPen : pen;
+                        Players[Players.IndexOf(p)].Penalties["msg"] += pen;
+                        Notice((string)penalty["nick"], $"Penalty of {Duration(pen)} added to your timer for chatting in the channel.");
                         break;
                     case "part":
-                        penalty = 200 * PenTTL(p.Level) / Config.RPBase;
-                        penalty = penalty > Config.LimitPen ? Config.LimitPen : penalty;
-                        Players[Players.IndexOf(p)].Penalties["part"] += penalty;
+                        pen = 200 * PenTTL(p.Level) / Config.RPBase;
+                        pen = pen > Config.LimitPen ? Config.LimitPen : pen;
+                        Players[Players.IndexOf(p)].Penalties["part"] += pen;
                         Players[Players.IndexOf(p)].Online = false;
-                        Notice(nick, $"Penalty of {Duration(penalty)} added to your timer for leaving the channel.");
+                        Notice((string)penalty["nick"], $"Penalty of {Duration(pen)} added to your timer for leaving the channel.");
                         break;
                     case "kick":
-                        penalty = 250 * PenTTL(p.Level) / Config.RPBase;
-                        penalty = penalty > Config.LimitPen ? Config.LimitPen : penalty;
-                        Players[Players.IndexOf(p)].Penalties["kick"] += penalty;
-                        Notice(nick, $"Penalty of {Duration(penalty)} added to your timer for being kicked.");
+                        pen = 250 * PenTTL(p.Level) / Config.RPBase;
+                        pen = pen > Config.LimitPen ? Config.LimitPen : pen;
+                        Players[Players.IndexOf(p)].Penalties["kick"] += pen;
+                        Notice((string)penalty["nick"], $"Penalty of {Duration(pen)} added to your timer for being kicked.");
                         break;
                 }
-                Players[Players.IndexOf(p)].TTL += penalty;
+                Players[Players.IndexOf(p)].TTL += pen;
             }
         }
 
@@ -1464,15 +1463,15 @@ namespace IdleRPG.NET {
         }
 
         private void ChanMsg(string msg) {
-            IrcClient.LocalUser.SendMessage(Config.ChannelName, msg);
+            IrcClient.SendMessage(SendType.Message, Config.ChannelName, msg);
         }
 
         private void Notice(string nick, string msg) {
-            IrcClient.LocalUser.SendNotice(nick, msg);
+            IrcClient.SendMessage(SendType.Notice, nick, msg);
         }
 
         private void PrivMsg(IrcUser ircUser, string msg) {
-            IrcClient.LocalUser.SendMessage(ircUser.NickName, msg);
+            IrcClient.SendMessage(SendType.Message, ircUser.Nick, msg);
         }
     }
 
