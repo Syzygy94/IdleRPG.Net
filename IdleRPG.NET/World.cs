@@ -1203,7 +1203,7 @@ namespace IdleRPG.NET {
                             Notice(ircUser.Nick, $"Sorry, you are already online as {Players.First(p => p.Nick == ircUser.Nick).Name}.");
                         else {
                             if (msg.Length < 3 || msg[2].Equals(string.Empty))
-                                Notice(ircUser.Nick, "Try: LOGIN <username> <password>");
+                                Notice(ircUser.Nick, "Try: LOGIN <char name> <password>");
                             else if (Players.Exists(p => p.Name == msg[1]) == false)
                                 Notice(ircUser.Nick, "Sorry, no such account name. Note that account names are case sensitive.");
                             else if (ircUser.JoinedChannels.Contains(Config.ChannelName) == false)
@@ -1365,6 +1365,80 @@ namespace IdleRPG.NET {
                             War(Players.Where(p => p.Online).ToList());
                         else
                             PrivMsg(ircUser, "You do not have access to WAR.");
+                        break;
+                    case "battle":
+                        if (Players.Exists(p => p.Nick == ircUser.Nick) && Players.First(p => p.Nick == ircUser.Nick).Admin)
+                            TeamBattle(Players.Where(p => p.Online).ToList());
+                        else
+                            PrivMsg(ircUser, "You do not have access to BATTLE.");
+                        break;
+                    case "calamity":
+                        if (Players.Exists(p => p.Nick == ircUser.Nick) && Players.First(p => p.Nick == ircUser.Nick).Admin)
+                            Calamity(Players.Where(p => p.Online).ToList());
+                        else
+                            PrivMsg(ircUser, "You do not have access to CALAMITY.");
+                        break;
+                    case "goodness":
+                        if (Players.Exists(p => p.Nick == ircUser.Nick) && Players.First(p => p.Nick == ircUser.Nick).Admin)
+                            Goodness(Players.Where(p => p.Online && p.Align == "g").ToList());
+                        else
+                            PrivMsg(ircUser, "You do not have access to GOODNESS.");
+                        break;
+                    case "evilness":
+                        if (Players.Exists(p => p.Nick == ircUser.Nick) && Players.First(p => p.Nick == ircUser.Nick).Admin)
+                            Evilness(Players.Where(p => p.Online && p.Align == "e").ToList(), Players.Where(p => p.Online && p.Align == "g").ToList());
+                        else
+                            PrivMsg(ircUser, "You do not have access to EVILNESS.");
+                        break;
+                    case "godsend":
+                        if (Players.Exists(p => p.Nick == ircUser.Nick) && Players.First(p => p.Nick == ircUser.Nick).Admin)
+                            GodSend(Players.Where(p => p.Online).ToList());
+                        else
+                            PrivMsg(ircUser, "You do not have access to GODSEND.");
+                        break;
+                    case "tourney":
+                        if (Players.Exists(p => p.Nick == ircUser.Nick) && Players.First(p => p.Nick == ircUser.Nick).Admin)
+                            Tournament.TournamentTime = DateTime.Now;
+                        else
+                            PrivMsg(ircUser, "You do not have access to TOURNEY.");
+                        break;
+                    case "help":
+                        PrivMsg(ircUser, "Commands available for all users:");
+                        PrivMsg(ircUser, " ");
+                        PrivMsg(ircUser, "REGISTER <character name> <password> <class> - Create a new character");
+                        PrivMsg(ircUser, "LOGOUT - Logout of IdleRPG and also be penalized");
+                        PrivMsg(ircUser, "QUEST - Gives info on any ongoing quests");
+                        PrivMsg(ircUser, "STATUS <character name> (optional) - Gives info for a provided character name. If no name given, gives your info");
+                        PrivMsg(ircUser, "WHOAMI - Displays your logged in name, level, class, and next level up duration");
+                        PrivMsg(ircUser, "NEWPASS <password> - Changes your password");
+                        PrivMsg(ircUser, "ALIGN <good|neutral|evil> - Changes your alignment to \"good\", \"neutral\" (default) or \"evil\"");
+                        PrivMsg(ircUser, "LOGIN <character name> <password> - Logs your character in");
+                        PrivMsg(ircUser, "REMOVEME - Removes your logged in character from the game. WARNING!! There is no confirmation.");
+                        PrivMsg(ircUser, "TOP - Shows the top 5 characters");
+                        PrivMsg(ircUser, "FIGHT <character name> - Do battle with a given character. Need to be level 25 or higher to use.");
+                        PrivMsg(ircUser, " ");
+                        PrivMsg(ircUser, "Commands available for Admin users:");
+                        PrivMsg(ircUser, " ");
+                        PrivMsg(ircUser, "HOG - Forces a Hand of God event");
+                        PrivMsg(ircUser, "CALAMITY - Forces a Calamity event");
+                        PrivMsg(ircUser, "GOODNESS - Forces a Goodness event");
+                        PrivMsg(ircUser, "EVILNESS - Forces an Evilness event");
+                        PrivMsg(ircUser, "GODSEND - Forces a Godsend event");
+                        PrivMsg(ircUser, "BATTLE - Forces a Team Battle event");
+                        PrivMsg(ircUser, "TOURNEY - Forces a Tournament event");
+                        PrivMsg(ircUser, "WAR - Forces a War event");
+                        PrivMsg(ircUser, "CHPASS <character name> <password> - Changes a character's password");
+                        PrivMsg(ircUser, "CHUSER <character name> <new character name> - Changes a character's name");
+                        PrivMsg(ircUser, "CHCLASS <character name> <new character class> - Changes a character's class");
+                        PrivMsg(ircUser, "PUSH <character name> <seconds> - Pushes a character X number of seconds towards their next level");
+                        PrivMsg(ircUser, "DELOLD <# of days> - Deletes players that haven't logged in in X number of days");
+                        PrivMsg(ircUser, "DEL <character name> - Deletes a character");
+                        PrivMsg(ircUser, "MKADMIN <character name> - Makes a given character a bot admin");
+                        PrivMsg(ircUser, "DELADMIN <character name> - Removes a given character's bot admin access");
+                        PrivMsg(ircUser, "IRC - Sends whatever after the command directly to the IRC server (ex: IRC PRIVMSG NickServ Identify <password>)");
+                        PrivMsg(ircUser, "TOPIC - Sets the channel topic to whatever after the command (ex: TOPIC Message \"Help\" to IdleRPG for commands)");
+                        PrivMsg(ircUser, "MOVE <character name> <x> <y> - Moves a given character name to a x,y position on the map");
+                        PrivMsg(ircUser, "PIT <player 1> <player 2> - Forces 2 players to fight");
                         break;
                     default:
                         PrivMsg(ircUser, "Unknown command.");
