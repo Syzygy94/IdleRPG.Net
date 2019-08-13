@@ -125,5 +125,15 @@ namespace IdleRPG.NET_Tests {
             Quest quest = Utilities.LoadQuest();
             Assert.AreEqual<Quest>(world.Quest, quest);
         }
+
+        [TestMethod]
+        public void TestSaveAndLoadMapItems() {
+            foreach (Player p in players)
+                world.FindItem(p);
+
+            Utilities.SaveMapItems(world.MapItems);
+            Dictionary<string, List<Item>> mapItems = Utilities.LoadMapItems();
+            Assert.IsTrue(new DictionaryComparer<string, List<Item>>(new ListComparer<Item>()).Equals(world.MapItems, mapItems));
+        }
     }
 }
