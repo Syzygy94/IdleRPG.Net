@@ -49,6 +49,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Config.cs" />
+    <Compile Include="CryptoUtils.cs" />
     <Compile Include="DictionaryComparer.cs" />
     <Compile Include="Event.cs" />
     <Compile Include="Item.cs" />

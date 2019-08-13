@@ -20,5 +20,7 @@ namespace IdleRPG.NET {
         public static bool UseSSL { get { return bool.Parse(ConfigurationManager.AppSettings["UseSSL"]); } }
         public static string Owner { get { return ConfigurationManager.AppSettings["Owner"]; } }
         public static bool AutoLogin { get { return bool.Parse(ConfigurationManager.AppSettings["AutoLogin"]); } }
+        public static string CryptoVector { get { return ConfigurationManager.AppSettings["CryptoVector"]; } }
+        public static string CryptoKey { get { return ConfigurationManager.AppSettings["CryptoKey"]; } }
     }
 }
