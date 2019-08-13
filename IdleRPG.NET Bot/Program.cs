@@ -72,22 +72,11 @@ namespace IdleRPG.NET_Bot {
         }
 
         private static void IrcClient_OnChannelMessage(object sender, IrcEventArgs e) {
-            Hashtable penalty = new Hashtable
-            {
-                { "type", "msg" },
-                { "nick", e.Data.Nick },
-                { "textLength", e.Data.Message.Length }
-            };
-            world.Penalize(penalty);
+            world.Penalize(new Penalty() { PenaltyType = PenaltyType.Message, Nick = e.Data.Nick, TextLength = e.Data.Message.Length });
         }
 
         private static void IrcClient_OnPart(object sender, PartEventArgs e) {
-            Hashtable penalty = new Hashtable
-            {
-                { "type", "part" },
-                { "nick", e.Who }
-            };
-            world.Penalize(penalty);
+            world.Penalize(new Penalty() { PenaltyType = PenaltyType.Part, Nick = e.Who });
         }
 
         private static void IrcClient_OnChannelActiveSynced(object sender, IrcEventArgs e) {
@@ -96,32 +85,15 @@ namespace IdleRPG.NET_Bot {
         }
 
         private static void IrcClient_OnQuit(object sender, QuitEventArgs e) {
-            Hashtable penalty = new Hashtable
-            {
-                { "type", "quit" },
-                { "nick", e.Who }
-            };
-            world.Penalize(penalty);
+            world.Penalize(new Penalty() { PenaltyType = PenaltyType.Quit, Nick = e.Who });
         }
 
         private static void IrcClient_OnNickChange(object sender, NickChangeEventArgs e) {
-            Hashtable penalty = new Hashtable
-            {
-                { "type", "nick" },
-                { "nick", e.OldNickname },
-                { "newNick", e.NewNickname },
-                { "host", e.Data.Host }
-            };
-            world.Penalize(penalty);
+            world.Penalize(new Penalty() { PenaltyType = PenaltyType.Nick, Nick = e.OldNickname, NewNick = e.NewNickname, UHost = e.Data.Host });
         }
 
         private static void IrcClient_OnKick(object sender, KickEventArgs e) {
-            Hashtable penalty = new Hashtable
-            {
-                { "type", "kick" },
-                { "nick", e.Whom }
-            };
-            world.Penalize(penalty);
+            world.Penalize(new Penalty() { PenaltyType = PenaltyType.Kick, Nick = e.Whom });
         }
 
         public static void StartRPG() {

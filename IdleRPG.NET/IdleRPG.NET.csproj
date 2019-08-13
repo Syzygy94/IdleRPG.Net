@@ -48,6 +48,7 @@
     <Compile Include="Config.cs" />
     <Compile Include="Event.cs" />
     <Compile Include="Item.cs" />
+    <Compile Include="Penalty.cs" />
     <Compile Include="Player.cs" />
     <Compile Include="Pos.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

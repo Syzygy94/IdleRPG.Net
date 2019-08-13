@@ -1140,7 +1140,7 @@ namespace IdleRPG.NET {
                         break;
                     case "logout":
                         if (Players.Exists(p => p.Nick == ircUser.Nick) && Players.First(p => p.Nick == ircUser.Nick).Online)
-                            Penalize(new Hashtable() { { "type", "logout" }, { "nick", ircUser.Nick } });
+                            Penalize(new Penalty() { PenaltyType = PenaltyType.Logout, Nick = ircUser.Nick });
                         else
                             PrivMsg(ircUser, "You are not logged in.");
                         break;
@@ -1378,52 +1378,52 @@ namespace IdleRPG.NET {
             }
         }
 
-        public void Penalize(Hashtable penalty) {
-            Player p = Players.FirstOrDefault(player => player.Nick == (string)penalty["nick"] && player.Online);
+        public void Penalize(Penalty penalty) {
+            Player p = Players.FirstOrDefault(player => player.Nick == penalty.Nick && player.Online);
 
             if (p != null) {
                 QuestPenaltyCheck(p);
                 int pen = 0;
-                switch ((string)penalty["type"]) {
-                    case "quit":
+                switch (penalty.PenaltyType) {
+                    case PenaltyType.Quit:
                         pen = 20 * PenTTL(p.Level) / Config.RPBase;
                         pen = pen > Config.LimitPen ? Config.LimitPen : pen;
                         Players[Players.IndexOf(p)].Penalties["quit"] += pen;
                         Players[Players.IndexOf(p)].Online = false;
                         break;
-                    case "nick":
+                    case PenaltyType.Nick:
                         pen = 30 * PenTTL(p.Level) / Config.RPBase;
                         pen = pen > Config.LimitPen ? Config.LimitPen : pen;
                         Players[Players.IndexOf(p)].Penalties["nick"] += pen;
-                        Players[Players.IndexOf(p)].Nick = (string)penalty["newNick"];
-                        Players[Players.IndexOf(p)].UHost = (string)penalty["host"];
-                        Notice((string)penalty["newNick"], $"Penalty of {Duration(pen)} added to your timer for nick change.");
+                        Players[Players.IndexOf(p)].Nick = penalty.NewNick;
+                        Players[Players.IndexOf(p)].UHost = penalty.UHost;
+                        Notice(penalty.NewNick, $"Penalty of {Duration(pen)} added to your timer for nick change.");
                         break;
-                    case "logout":
+                    case PenaltyType.Logout:
                         pen = 20 * PenTTL(p.Level) / Config.RPBase;
                         pen = pen > Config.LimitPen ? Config.LimitPen : pen;
                         Players[Players.IndexOf(p)].Penalties["logout"] += pen;
-                        Notice((string)penalty["nick"], $"Penalty of {Duration(pen)} added to your timer for LOGOUT command.");
+                        Notice(penalty.Nick, $"Penalty of {Duration(pen)} added to your timer for LOGOUT command.");
                         Players[Players.IndexOf(p)].Online = false;
                         break;
-                    case "msg":
-                        pen = (int)penalty["textLength"] * PenTTL(p.Level) / Config.RPBase;
+                    case PenaltyType.Message:
+                        pen = penalty.TextLength * PenTTL(p.Level) / Config.RPBase;
                         pen = pen > Config.LimitPen ? Config.LimitPen : pen;
                         Players[Players.IndexOf(p)].Penalties["msg"] += pen;
-                        Notice((string)penalty["nick"], $"Penalty of {Duration(pen)} added to your timer for chatting in the channel.");
+                        Notice(penalty.Nick, $"Penalty of {Duration(pen)} added to your timer for chatting in the channel.");
                         break;
-                    case "part":
+                    case PenaltyType.Part:
                         pen = 200 * PenTTL(p.Level) / Config.RPBase;
                         pen = pen > Config.LimitPen ? Config.LimitPen : pen;
                         Players[Players.IndexOf(p)].Penalties["part"] += pen;
                         Players[Players.IndexOf(p)].Online = false;
-                        Notice((string)penalty["nick"], $"Penalty of {Duration(pen)} added to your timer for leaving the channel.");
+                        Notice(penalty.Nick, $"Penalty of {Duration(pen)} added to your timer for leaving the channel.");
                         break;
-                    case "kick":
+                    case PenaltyType.Kick:
                         pen = 250 * PenTTL(p.Level) / Config.RPBase;
                         pen = pen > Config.LimitPen ? Config.LimitPen : pen;
                         Players[Players.IndexOf(p)].Penalties["kick"] += pen;
-                        Notice((string)penalty["nick"], $"Penalty of {Duration(pen)} added to your timer for being kicked.");
+                        Notice(penalty.Nick, $"Penalty of {Duration(pen)} added to your timer for being kicked.");
                         break;
                 }
                 Players[Players.IndexOf(p)].TTL += pen;
