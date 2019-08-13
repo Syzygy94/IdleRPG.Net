@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace IdleRPG.NET {
+﻿namespace IdleRPG.NET {
     public enum PenaltyType {
         Quit,
         Nick,
