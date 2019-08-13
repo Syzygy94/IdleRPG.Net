@@ -1052,7 +1052,7 @@ namespace IdleRPG.NET {
                                     Class = string.Join(" ", msg, 3, msg.Length - 3),
                                     Nick = ircUser.Nick,
                                     UHost = ircUser.Host,
-                                    Password = msg[2],
+                                    Password = CryptoUtils.GetEncryptedText(Config.CryptoVector, Config.CryptoKey, msg[2]),
                                     Admin = Config.Owner == ircUser.Nick
                                 });
                                 ChanMsg($"Welcome {ircUser.Nick}'s new player {msg[1]}, the " +
@@ -1078,7 +1078,7 @@ namespace IdleRPG.NET {
                             else if (Players.Exists(p => p.Name == msg[1]) == false)
                                 PrivMsg(ircUser, $"No such character {msg[1]}.");
                             else {
-                                Players.First(p => p.Name == msg[1]).Password = msg[2];
+                                Players.First(p => p.Name == msg[1]).Password = CryptoUtils.GetEncryptedText(Config.CryptoVector, Config.CryptoKey, msg[2]);
                                 PrivMsg(ircUser, $"Password for {msg[1]} changed.");
                             }
                         } else
@@ -1180,7 +1180,7 @@ namespace IdleRPG.NET {
                             if (msg.Length < 2)
                                 PrivMsg(ircUser, "Try: NEWPASS <new password>");
                             else {
-                                Players.First(p => p.Nick == ircUser.Nick).Password = msg[1];
+                                Players.First(p => p.Nick == ircUser.Nick).Password = CryptoUtils.GetEncryptedText(Config.CryptoVector, Config.CryptoKey, msg[1]);
                                 PrivMsg(ircUser, "Your password was changed.");
                             }
                         } else
@@ -1208,7 +1208,7 @@ namespace IdleRPG.NET {
                                 Notice(ircUser.Nick, "Sorry, no such account name. Note that account names are case sensitive.");
                             else if (ircUser.JoinedChannels.Contains(Config.ChannelName) == false)
                                 Notice(ircUser.Nick, $"Sorry, you're not in {Config.ChannelName}.");
-                            else if (Players.First(p => p.Name == msg[1]).Password != msg[2])
+                            else if (Players.First(p => p.Name == msg[1]).Password != CryptoUtils.GetEncryptedText(Config.CryptoVector, Config.CryptoKey, msg[2]))
                                 Notice(ircUser.Nick, "Wrong password.");
                             else {
                                 IrcClient.Voice(Config.ChannelName, ircUser.Nick);
