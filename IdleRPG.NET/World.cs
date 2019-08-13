@@ -13,7 +13,7 @@ namespace IdleRPG.NET {
         public Dictionary<string, List<Item>> MapItems { get; private set; }
         public List<Player> Players { get; private set; }
         public DateTime LastTime { get; private set; }
-        public Hashtable Quest { get; private set; }
+        public Quest Quest { get; private set; }
         public List<Event> AllEvents { get; private set; }
         public Tournament Tournament { get; private set; }
         public bool Running { get; private set; }
@@ -26,16 +26,7 @@ namespace IdleRPG.NET {
             MapItems = new Dictionary<string, List<Item>>();
             LastTime = DateTime.MinValue;
             Players = new List<Player>();
-            Quest = new Hashtable()
-            {
-                {"players", new List<Player>() },
-                {"pos1", new Pos(0,0) },
-                {"pos2", new Pos(0,0) },
-                {"questTime", DateTime.Now.AddSeconds(Random.Next(21600)) },
-                {"text", string.Empty },
-                {"type", 1 },
-                {"stage", 1 }
-            };
+            Quest = new Quest();
             AllEvents = Utilities.LoadEvents();
             Tournament = new Tournament();
             IrcClient = ircClient;
@@ -97,20 +88,19 @@ namespace IdleRPG.NET {
             ProcessItems();
 
             if ((RPReport % 120) < (OldRPReport % 120)) {
-                // Save Quest
+                // TODO: Save Quest
             }
 
-            if (DateTime.Now > (DateTime)Quest["questTime"]) {
-                if (((List<Player>)Quest["players"]).Count == 0)
+            if (DateTime.Now > Quest.QuestTime) {
+                if (Quest.Players.Count == 0)
                     CreateQuest(online);
-                else if ((int)Quest["type"] == 1) {
-                    List<Player> questers = (List<Player>)Quest["players"];
-                    ChanMsg($"{string.Join(", ", questers.Select(p => p.Name).ToArray(), 0, 3)}, and {questers[3].Name} have " +
+                else if (Quest.QuestType == QuestType.Quest1) {
+                    ChanMsg($"{string.Join(", ", Quest.Players.Select(p => p.Name).ToArray(), 0, 3)}, and {Quest.Players[3].Name} have " +
                         $"blessed the realm by completing their quest! 25% of their burden is elminated.");
-                    foreach (Player p in questers)
+                    foreach (Player p in Quest.Players)
                         Players[Players.IndexOf(p)].TTL = (int)(Players[Players.IndexOf(p)].TTL * .75);
-                    Quest["players"] = new List<Player>();
-                    Quest["questTime"] = DateTime.Now.AddSeconds(21600);
+                    Quest.Players = new List<Player>();
+                    Quest.QuestTime = DateTime.Now.AddSeconds(21600);
                 }
             }
 
@@ -712,33 +702,32 @@ namespace IdleRPG.NET {
             for (int i = 0; i < Config.Tick; i++) {
                 Dictionary<Pos, Hashtable> positions = new Dictionary<Pos, Hashtable>();
 
-                if ((int)Quest["type"] == 2 && ((List<Player>)Quest["players"]).Count > 0) {
+                if (Quest.QuestType == QuestType.Quest2 && Quest.Players.Count > 0) {
                     bool stageFinished = true;
-                    foreach (Player p in (List<Player>)Quest["players"]) {
-                        if ((int)Quest["stage"] == 1) {
-                            if (Players[Players.IndexOf(p)].Pos != (Pos)Quest["pos1"]) {
+                    foreach (Player p in Quest.Players) {
+                        if (Quest.Stage == 1) {
+                            if (Players[Players.IndexOf(p)].Pos != Quest.Pos1) {
                                 stageFinished = false;
                                 break;
                             } else {
-                                if (Players[Players.IndexOf(p)].Pos != (Pos)Quest["pos2"]) {
+                                if (Players[Players.IndexOf(p)].Pos != Quest.Pos2) {
                                     stageFinished = false;
                                     break;
                                 }
                             }
                         }
                     }
-                    if ((int)Quest["stage"] == 1 && stageFinished)
-                        Quest["stage"] = 2;
-                    else if ((int)Quest["stage"] == 2 && stageFinished) {
-                        ChanMsg($"{string.Join(", ", ((List<Player>)Quest["players"]).Select(p => p.Name).ToArray(), 0, 3)}, and {((List<Player>)Quest["players"])[3].Name} " +
+                    if (Quest.Stage == 1 && stageFinished)
+                        Quest.Stage = 2;
+                    else if (Quest.Stage == 2 && stageFinished) {
+                        ChanMsg($"{string.Join(", ", Quest.Players.Select(p => p.Name).ToArray(), 0, 3)}, and {Quest.Players[3].Name} " +
                             $"have completed their journey! 25% of their burden is eliminated.");
-                        foreach (Player p in (List<Player>)Quest["players"])
+                        foreach (Player p in Quest.Players)
                             Players[Players.IndexOf(p)].TTL = (int)(Players[Players.IndexOf(p)].TTL * .75);
-                        Quest["players"] = new List<Player>();
-                        Quest["questTime"] = DateTime.Now.AddSeconds(21600);
-                        Quest["type"] = 1;
+                        Quest = new Quest();
+                        // TODO: Save Quest
                     } else {
-                        List<Player> players = online.Where(x => !((List<Player>)Quest["players"]).Any(y => y.Equals(x))).ToList();
+                        List<Player> players = online.Where(x => !Quest.Players.Any(y => y.Equals(x))).ToList();
                         foreach (Player player in players) {
                             Player p = Players[Players.IndexOf(player)];
                             p.Pos.X += Random.Next(3) - 1;
@@ -758,21 +747,21 @@ namespace IdleRPG.NET {
                             } else
                                 positions[p.Pos] = new Hashtable() { { "battled", false }, { "player", p } };
                         }
-                        foreach (Player player in (List<Player>)Quest["players"]) {
+                        foreach (Player player in Quest.Players) {
                             Player p = Players[Players.IndexOf(player)];
-                            if ((int)Quest["stage"] == 1) {
+                            if (Quest.Stage == 1) {
                                 if (Random.Next(100) < 1) {
-                                    if (p.Pos.X != ((Pos)Quest["pos1"]).X)
-                                        p.Pos.X += p.Pos.X < ((Pos)Quest["pos1"]).X ? 1 : -1;
-                                    if (p.Pos.Y != ((Pos)Quest["pos1"]).Y)
-                                        p.Pos.Y += p.Pos.Y < ((Pos)Quest["pos1"]).Y ? 1 : -1;
+                                    if (p.Pos.X != Quest.Pos1.X)
+                                        p.Pos.X += p.Pos.X < Quest.Pos1.X ? 1 : -1;
+                                    if (p.Pos.Y != Quest.Pos1.Y)
+                                        p.Pos.Y += p.Pos.Y < Quest.Pos1.Y ? 1 : -1;
                                 }
-                            } else if ((int)Quest["stage"] == 2) {
+                            } else if (Quest.Stage == 2) {
                                 if (Random.Next(100) < 1) {
-                                    if (p.Pos.X != ((Pos)Quest["pos2"]).X)
-                                        p.Pos.X += p.Pos.X < ((Pos)Quest["pos2"]).X ? 1 : -1;
-                                    if (p.Pos.Y != ((Pos)Quest["pos2"]).Y)
-                                        p.Pos.Y += p.Pos.Y < ((Pos)Quest["pos2"]).Y ? 1 : -1;
+                                    if (p.Pos.X != Quest.Pos2.X)
+                                        p.Pos.X += p.Pos.X < Quest.Pos2.X ? 1 : -1;
+                                    if (p.Pos.Y != Quest.Pos2.Y)
+                                        p.Pos.Y += p.Pos.Y < Quest.Pos2.Y ? 1 : -1;
                                 }
                             }
                         }
@@ -829,34 +818,37 @@ namespace IdleRPG.NET {
                 players.Remove(p);
                 pickedPlayers.Add(p);
             }
-            Quest["players"] = pickedPlayers;
 
             List<Event> events = AllEvents.Where(e => e.EventType == EventType.Quest1 || e.EventType == EventType.Quest2).ToList();
 
             Event quest = events[Random.Next(events.Count)];
             DateTime currTime = DateTime.Now;
             if (quest.EventType == EventType.Quest1) {
-                Quest["text"] = quest.EventText;
-                Quest["type"] = 1;
-                Quest["questTime"] = currTime.AddSeconds(43200).AddSeconds(Random.Next(43200));
-                Quest["pos1"] = new Pos(0, 0);
-                Quest["pos2"] = new Pos(0, 0);
+                Quest = new Quest()
+                {
+                    Players = pickedPlayers,
+                    QuestText = quest.EventText,
+                    QuestTime = currTime.AddSeconds(43200).AddSeconds(Random.Next(43200))
+                };
             } else {
                 Match match = Regex.Match(quest.EventText, @"(\d+) (\d+) (\d+) (\d+) (.*)");
-                Quest["pos1"] = new Pos(int.Parse(match.Groups[1].Value), int.Parse(match.Groups[2].Value));
-                Quest["pos2"] = new Pos(int.Parse(match.Groups[3].Value), int.Parse(match.Groups[4].Value));
-                Quest["text"] = match.Groups[5].Value;
-                Quest["type"] = 2;
-                Quest["stage"] = 1;
+                Quest = new Quest()
+                {
+                    Players = pickedPlayers,
+                    QuestType = QuestType.Quest2,
+                    Pos1 = new Pos(int.Parse(match.Groups[1].Value), int.Parse(match.Groups[2].Value)),
+                    Pos2 = new Pos(int.Parse(match.Groups[3].Value), int.Parse(match.Groups[4].Value)),
+                    QuestText = match.Groups[5].Value
+                };
             }
 
-            if ((int)Quest["type"] == 1)
+            if (Quest.QuestType == QuestType.Quest1)
                 ChanMsg($"{string.Join(", ", pickedPlayers.Select(p => p.Name).ToArray(), 0, 3)}, and {pickedPlayers[3].Name} have " +
-                    $"been chosen by the gods to {Quest["text"]}. Quest to end in {Duration((int)((DateTime)Quest["questTime"] - currTime).TotalSeconds)}.");
-            else if ((int)Quest["type"] == 2)
+                    $"been chosen by the gods to {Quest.QuestText}. Quest to end in {Duration((int)(Quest.QuestTime - currTime).TotalSeconds)}.");
+            else if (Quest.QuestType == QuestType.Quest2)
                 ChanMsg($"{string.Join(", ", pickedPlayers.Select(p => p.Name).ToArray(), 0, 3)}, and {pickedPlayers[3].Name} have " +
-                    $"been chosen by the gods to {Quest["text"]}. Participants must first reach {((Pos)Quest["pos1"]).ToString()}, then " +
-                    $"{((Pos)Quest["pos2"]).ToString()}.");
+                    $"been chosen by the gods to {Quest.QuestText}. Participants must first reach {Quest.Pos1.ToString()}, then " +
+                    $"{Quest.Pos2.ToString()}.");
 
             // TODO: Save quest
         }
@@ -994,8 +986,8 @@ namespace IdleRPG.NET {
         }
 
         public void QuestPenaltyCheck(Player player) {
-            if (Quest["players"] != null && ((List<Player>)Quest["players"]).Count > 0) {
-                foreach (Player quester in (List<Player>)Quest["players"]) {
+            if (Quest.Players != null && Quest.Players.Count > 0) {
+                foreach (Player quester in Quest.Players) {
                     if (quester == player) {
                         ChanMsg($"{Players[Players.IndexOf(player)].Name}'s prudence and self-regard has brought the wrath of the gods upon the realm. " +
                             $"All your great wickedness makes it as if you were heavy with lead, and to tend downwards with great weight and pressure " +
@@ -1008,8 +1000,8 @@ namespace IdleRPG.NET {
                             Players[Players.IndexOf(p)].TTL += gain;
                             Players[Players.IndexOf(p)].Penalties["quest"] += gain;
                         }
-                        Quest["players"] = new List<Player>();
-                        Quest["questTime"] = DateTime.Now.AddSeconds(43200);
+                        Quest.Players = new List<Player>();
+                        Quest.QuestTime = DateTime.Now.AddSeconds(43200);
                         // TODO: Save quest
                         break;
                     }
@@ -1145,14 +1137,14 @@ namespace IdleRPG.NET {
                             PrivMsg(ircUser, "You are not logged in.");
                         break;
                     case "quest":
-                        if (Quest["players"] != null && ((List<Player>)Quest["players"]).Count > 0) {
-                            if ((int)Quest["type"] == 1)
-                                PrivMsg(ircUser, $"{string.Join(", ", ((List<Player>)Quest["players"]).Select(p => p.Name).ToArray(), 0, 3)}, and {((List<Player>)Quest["players"])[3].Name} are " +
-                                    $"on a quest to {Quest["text"]}. Quest to complete in {Duration((int)((DateTime)Quest["questTime"] - DateTime.Now).TotalSeconds)}.");
-                            else if ((int)Quest["type"] == 2)
-                                PrivMsg(ircUser, $"{string.Join(", ", ((List<Player>)Quest["players"]).Select(p => p.Name).ToArray(), 0, 3)}, and {((List<Player>)Quest["players"])[3].Name} are " +
-                                    $"on a quest to {Quest["text"]}. Participants must first reach {((Pos)Quest["pos1"]).ToString()}, then " +
-                                    $"{((Pos)Quest["pos2"]).ToString()}.");
+                        if (Quest.Players != null && Quest.Players.Count > 0) {
+                            if (Quest.QuestType == QuestType.Quest1)
+                                PrivMsg(ircUser, $"{string.Join(", ", Quest.Players.Select(p => p.Name).ToArray(), 0, 3)}, and {Quest.Players[3].Name} are " +
+                                    $"on a quest to {Quest.QuestText}. Quest to complete in {Duration((int)((DateTime)Quest.QuestTime - DateTime.Now).TotalSeconds)}.");
+                            else if (Quest.QuestType == QuestType.Quest2)
+                                PrivMsg(ircUser, $"{string.Join(", ", Quest.Players.Select(p => p.Name).ToArray(), 0, 3)}, and {Quest.Players[3].Name} are " +
+                                    $"on a quest to {Quest.QuestText}. Participants must first reach {Quest.Pos1.ToString()}, then " +
+                                    $"{Quest.Pos2.ToString()}.");
                         } else
                             PrivMsg(ircUser, "There is no active quest.");
                         break;
