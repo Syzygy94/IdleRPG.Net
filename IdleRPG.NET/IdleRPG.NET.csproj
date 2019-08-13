@@ -49,6 +49,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Config.cs" />
+    <Compile Include="DictionaryComparer.cs" />
     <Compile Include="Event.cs" />
     <Compile Include="Item.cs" />
     <Compile Include="Penalty.cs" />
