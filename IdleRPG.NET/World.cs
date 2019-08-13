@@ -23,10 +23,10 @@ namespace IdleRPG.NET {
         private int OldRPReport;
 
         public World(IrcClient ircClient) {
-            MapItems = new Dictionary<string, List<Item>>();
+            MapItems = Utilities.LoadMapItems();
             LastTime = DateTime.MinValue;
-            Players = new List<Player>();
-            Quest = new Quest();
+            Players = Utilities.LoadPlayers();
+            Quest = Utilities.LoadQuest();
             AllEvents = Utilities.LoadEvents();
             Tournament = new Tournament();
             IrcClient = ircClient;
@@ -88,7 +88,7 @@ namespace IdleRPG.NET {
             ProcessItems();
 
             if ((RPReport % 120) < (OldRPReport % 120)) {
-                // TODO: Save Quest
+                Utilities.SaveQuest(Quest);
             }
 
             if (DateTime.Now > Quest.QuestTime) {
@@ -138,6 +138,10 @@ namespace IdleRPG.NET {
                                 LevelUp(Players[Players.IndexOf(p)]);
                         }
                     }
+                }
+                if ((RPReport % 60) < (OldRPReport % 60)) {
+                    Utilities.SavePlayers(Players);
+                    Utilities.SaveMapItems(MapItems);
                 }
                 RPReport = RPReport + Config.Tick > int.MaxValue ? 0 : RPReport;
                 OldRPReport = RPReport;
@@ -725,7 +729,7 @@ namespace IdleRPG.NET {
                         foreach (Player p in Quest.Players)
                             Players[Players.IndexOf(p)].TTL = (int)(Players[Players.IndexOf(p)].TTL * .75);
                         Quest = new Quest();
-                        // TODO: Save Quest
+                        Utilities.SaveQuest(Quest);
                     } else {
                         List<Player> players = online.Where(x => !Quest.Players.Any(y => y.Equals(x))).ToList();
                         foreach (Player player in players) {
@@ -850,7 +854,7 @@ namespace IdleRPG.NET {
                     $"been chosen by the gods to {Quest.QuestText}. Participants must first reach {Quest.Pos1.ToString()}, then " +
                     $"{Quest.Pos2.ToString()}.");
 
-            // TODO: Save quest
+            Utilities.SaveQuest(Quest);
         }
 
         public void CreateTournament(List<Player> online) {
@@ -1000,9 +1004,8 @@ namespace IdleRPG.NET {
                             Players[Players.IndexOf(p)].TTL += gain;
                             Players[Players.IndexOf(p)].Penalties["quest"] += gain;
                         }
-                        Quest.Players = new List<Player>();
-                        Quest.QuestTime = DateTime.Now.AddSeconds(43200);
-                        // TODO: Save quest
+                        Quest = new Quest() { QuestTime = DateTime.Now.AddSeconds(43200) };
+                        Utilities.SaveQuest(Quest);
                         break;
                     }
                 }

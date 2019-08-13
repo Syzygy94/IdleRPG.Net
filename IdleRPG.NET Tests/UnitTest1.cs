@@ -102,12 +102,28 @@ namespace IdleRPG.NET_Tests {
         [TestMethod]
         public void TestMovePlayers() {
             world.Start();
+            world.CreateQuest(players);
             world.MovePlayers(players);
         }
 
         [TestMethod]
         public void TestCreateQuest() {
             world.CreateQuest(players);
+        }
+
+        [TestMethod]
+        public void TestSaveAndLoadPlayers() {
+            Utilities.SavePlayers(players);
+            List<Player> Players = Utilities.LoadPlayers();
+            CollectionAssert.AreEqual(players, Players);
+        }
+
+        [TestMethod]
+        public void TestSaveAndLoadQuest() {
+            world.CreateQuest(players);
+            Utilities.SaveQuest(world.Quest);
+            Quest quest = Utilities.LoadQuest();
+            Assert.AreEqual<Quest>(world.Quest, quest);
         }
     }
 }

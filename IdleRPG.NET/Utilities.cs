@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using Newtonsoft.Json;
+using System.Collections.Generic;
 using System.IO;
 
 namespace IdleRPG.NET {
@@ -27,6 +28,39 @@ namespace IdleRPG.NET {
             }
 
             return events;
+        }
+
+        public static List<Player> LoadPlayers() {
+            if (!File.Exists("players.json"))
+                return new List<Player>();
+
+            return JsonConvert.DeserializeObject<List<Player>>(File.ReadAllText("players.json"));
+        }
+
+        public static void SavePlayers(List<Player> players) {
+            File.WriteAllText("players.json", JsonConvert.SerializeObject(players, Formatting.None));
+        }
+
+        public static Dictionary<string, List<Item>> LoadMapItems() {
+            if (!File.Exists("mapitems.json"))
+                return new Dictionary<string, List<Item>>();
+
+            return JsonConvert.DeserializeObject<Dictionary<string, List<Item>>>(File.ReadAllText("mapitems.json"));
+        }
+
+        public static void SaveMapItems(Dictionary<string, List<Item>> mapItems) {
+            File.WriteAllText("mapitems.json", JsonConvert.SerializeObject(mapItems, Formatting.None));
+        }
+
+        public static Quest LoadQuest() {
+            if (!File.Exists("quest.json"))
+                return new Quest();
+
+            return JsonConvert.DeserializeObject<Quest>(File.ReadAllText("quest.json"));
+        }
+
+        public static void SaveQuest(Quest quest) {
+            File.WriteAllText("quest.json", JsonConvert.SerializeObject(quest, Formatting.None));
         }
     }
 }
