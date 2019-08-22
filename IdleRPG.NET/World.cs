@@ -307,6 +307,12 @@ namespace IdleRPG.NET {
                 p.TTL += ttl;
                 ChanMsg($"{p.Name} reaches next level in {Duration(p.TTL)}.");
             }
+
+            int factor = p.Align == "g" ? 50 : p.Align == "e" ? 100 : 67;
+            if (Random.Next(factor) < 1) {
+                ChanMsg($"While recovering from battle, {p.Name} notices a glint in the mud. Upon investigation, they find an old lost item!");
+                FindItem(p);
+            }
         }
 
         public void CollisionFight(Player p, Player opp) {
