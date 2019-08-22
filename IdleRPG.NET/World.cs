@@ -989,21 +989,16 @@ namespace IdleRPG.NET {
                 Tournament.TournamentTime = DateTime.Now.AddSeconds(30);
         }
 
-        public void QuestPenaltyCheck(Player player) {
+        public void QuestPenaltyCheck(Player p) {
             if (Quest.Players != null && Quest.Players.Count > 0) {
                 foreach (Player quester in Quest.Players) {
-                    if (quester == player) {
-                        ChanMsg($"{Players[Players.IndexOf(player)].Name}'s prudence and self-regard has brought the wrath of the gods upon the realm. " +
-                            $"All your great wickedness makes it as if you were heavy with lead, and to tend downwards with great weight and pressure " +
-                            $"towards hell. Therefore have you drawn yourselves 15 steps closer to that gaping maw.");
-                        List<Player> online = Players.Where(p => p.Online).ToList();
-                        if (online is null || online.Count == 0)
-                            return;
-                        foreach (Player p in online) {
-                            int gain = 15 * PenTTL(p.Level) / Config.RPBase;
-                            Players[Players.IndexOf(p)].TTL += gain;
-                            Players[Players.IndexOf(p)].Penalties["quest"] += gain;
-                        }
+                    if (quester == p) {
+                        ChanMsg($"{Players[Players.IndexOf(p)].Name}'s cowardice has brought the wrath of the gods down upon them. All their great wickedness makes " +
+                            $"them heavy with lead, and to tend downwards with great weight and pressure towards hell. Therefore have they drawn themself 30 steps closer " +
+                            $"to that gaping maw.");
+                        int gain = 30 * PenTTL(p.Level);
+                        Players[Players.IndexOf(p)].TTL += gain;
+                        Players[Players.IndexOf(p)].Penalties["quest"] += gain;
                         Quest = new Quest() { QuestTime = DateTime.Now.AddSeconds(43200) };
                         Utilities.SaveQuest(Quest);
                         break;
@@ -1013,12 +1008,12 @@ namespace IdleRPG.NET {
 
             if (Tournament.Players != null && Tournament.Players.Count > 0) {
                 foreach (Player tourney in Tournament.Players) {
-                    if (tourney == player) {
-                        int ttl = (int)(0.10 * Players[Players.IndexOf(player)].TTL);
-                        Players[Players.IndexOf(player)].TTL += ttl;
-                        ChanMsg($"{Players[Players.IndexOf(player)].Name} has disobeyed the gods and declared themsevles unfit for the tournament, " +
+                    if (tourney == p) {
+                        int ttl = (int)(0.10 * Players[Players.IndexOf(p)].TTL);
+                        Players[Players.IndexOf(p)].TTL += ttl;
+                        ChanMsg($"{Players[Players.IndexOf(p)].Name} has disobeyed the gods and declared themsevles unfit for the tournament, " +
                             $"therefore the remainder of the event shall be cancelled. The tournament participants have conspired to add {Duration(ttl)} " +
-                            $"to {Players[Players.IndexOf(player)].Name}'s time to level {Players[Players.IndexOf(player)].Level + 1}. Another tournament " +
+                            $"to {Players[Players.IndexOf(p)].Name}'s time to level {Players[Players.IndexOf(p)].Level + 1}. Another tournament " +
                             $"will begin within the hour!");
                         Tournament.Players = new List<Player>();
                         Tournament.TournamentTime = DateTime.Now.AddSeconds(1800).AddSeconds(Random.Next(1800));
